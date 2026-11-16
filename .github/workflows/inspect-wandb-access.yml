@@ -1,0 +1,16 @@
+name: Inspect supported W&B access settings
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    env:
+      WANDB_API_KEY: ${{ secrets.WANDB_BACKFILL_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 inspect_wandb_access.py
