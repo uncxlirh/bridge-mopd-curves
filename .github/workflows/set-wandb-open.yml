@@ -1,4 +1,4 @@
-name: Make W&B curves publicly readable
+name: Set W&B project Open access
 on:
   workflow_dispatch:
 permissions:

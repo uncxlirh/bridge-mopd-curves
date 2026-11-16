@@ -1,4 +1,4 @@
-"""Make only the requested W&B project publicly readable and verify curves."""
+"""Set the requested project to Open and verify unauthenticated curves."""
 import base64
 import json
 import os
@@ -34,16 +34,16 @@ read = """query($entity:String!, $project:String!) {
 before = query(read, variables)["project"]
 assert before, "Project not found"
 print("BEFORE", before, flush=True)
-if before["access"] != "PUBLIC":
+if before["access"].upper() != "OPEN":
     mutation = """mutation($entity:String!, $project:String!) {
-      upsertModel(input:{entityName:$entity, name:$project, access:"PUBLIC"}) {
+      upsertModel(input:{entityName:$entity, name:$project, access:"open"}) {
         model { name access }
       }
     }"""
     result = query(mutation, variables)
     print("UPDATED", result["upsertModel"]["model"], flush=True)
 after = query(read, variables, authenticated=False)["project"]
-assert after and after["access"] == "PUBLIC", after
+assert after and after["access"].upper() == "OPEN", after
 print("ANONYMOUS PROJECT ACCESS", after, flush=True)
 history = """query($entity:String!, $project:String!, $run:String!, $specs:[JSONString!]!) {
   project(name:$project, entityName:$entity) {
@@ -57,4 +57,4 @@ if isinstance(points, str):
     points = json.loads(points)
 assert points, "Anonymous history is empty"
 print("ANONYMOUS CURVE POINTS", len(points), flush=True)
-print("VERIFIED PUBLIC READ ACCESS", f"https://wandb.ai/{ENTITY}/{PROJECT}", flush=True)
+print("VERIFIED OPEN ACCESS", f"https://wandb.ai/{ENTITY}/{PROJECT}", flush=True)
