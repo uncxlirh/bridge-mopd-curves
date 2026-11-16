@@ -37,6 +37,9 @@ walk(spec)
 assert panels and all(p["xAxis"] == "plot/step" for p in panels)
 evaluations = [p for p in panels if any(y.startswith("evaluation/") for y in p["metrics"])]
 assert evaluations and all(p.get("smoothingWeight", 0) == 0 for p in evaluations)
+required = {"evaluation/"+k+"_pct" for k in ["math", "code", "medqa", "casehold", "finqa", "instruction_following"]}
+assert required <= {m for p in panels for m in p["metrics"]}
+assert "六领域正式评测结果" in json.dumps(spec, ensure_ascii=False)
 history_query = """query($entity:String!, $project:String!, $run:String!, $specs:[JSONString!]!) {
  project(name:$project, entityName:$entity) { run(name:$run) { sampledHistory(specs:$specs) } }
 }"""

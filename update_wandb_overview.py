@@ -170,8 +170,25 @@ def construct(index, refs=None):
         points=content.get("derived",{}).get("evaluation/macro6_pct",[])
         checkpoint,score=(str(points[-1][0]),f"{points[-1][1]:.2f}") if points else ("未齐","—")
         table.append(f"| {record.get('display_name')} | {record['lastStep']}/{record['overview']['budget_steps']} | {checkpoint} | {score} |")
+    domain_columns = [("数学", "math"), ("代码", "code"), ("医学", "medqa"),
+                      ("法律", "casehold"), ("金融", "finqa"), ("指令遵循", "instruction_following")]
+    domain_table = ["| 实验 | 检查点 | " + " | ".join(t for t,k in domain_columns) + " | 六域均分 |",
+                    "|---|---:|" + "---:|" * 7]
+    for record in records:
+        d = json.loads(Path("data", record["id"]+".json").read_text()).get("derived", {})
+        checkpoints = sorted({int(step) for key,points in d.items() if key.startswith("evaluation/")
+                              and key.endswith("_pct") for step,value in points})
+        checkpoint = checkpoints[-1] if checkpoints else None
+        def score(key):
+            values = dict(d.get(key, []))
+            return f"{values[checkpoint]:.2f}" if checkpoint in values else "—"
+        values = [score(f"evaluation/{key}_pct") for title,key in domain_columns]
+        domain_table.append("| " + " | ".join([record["display_name"], str(checkpoint) if checkpoint else "未评测",
+                                               *values, score("evaluation/macro6_pct")]) + " |")
     blocks = [wr.P("更新于 "+index["updated"]+"。仅展示学生 MOPD 实验及其对照。"),
-              wr.MarkdownBlock(note), wr.H1("已有实验的正式评测"), wr.MarkdownBlock("\n".join(table)),
+              wr.MarkdownBlock(note), wr.H1("六领域正式评测结果"), wr.MarkdownBlock("\n".join(domain_table)),
+              wr.P("表中每行只取同一个检查点；— 表示该项未完成。训练进度与评测进度分开记录。"),
+              wr.MarkdownBlock("\n".join(table)),
               wr.P("六领域均分 = mean(数学、代码、医疗、法律、金融、(IFBench + IFEval)/2)。不同检查点和不同配方分开比较。"),
               wr.P("数学与代码使用 DN-MOPD 8K、不思考的评测；其余使用 IM-MOPD avg@3、开启思考。IFBench 是宽松 prompt 级准确率，IFEval 是严格 prompt 级准确率。"),
               grid(established,"不归一化的已有对照",[panel("六领域评测均分 · %","evaluation/macro6_pct",percent=True)]),
