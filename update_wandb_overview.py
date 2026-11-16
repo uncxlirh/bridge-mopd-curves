@@ -131,6 +131,10 @@ def construct(index, refs=None):
         ("金融评测 · FinQA", "evaluation/finqa_pct"),
         ("指令遵循评测 · IFBench/IFEval 平均", "evaluation/instruction_following_pct"),
     ])]
+    domain_training = [panel(f"{title}训练 · 学生与当前教师的差异", f"bridge/abs_k1/{key}",
+                             x="train/step", smooth=True, position=i)
+                       for i,(title,key) in enumerate([("数学","math"),("代码","code"),("医学","med"),
+                                                       ("法律","law"),("金融","fin"),("指令遵循","if")])]
     diagnostics = [panel(title, key, position=i) for i, (title, key) in enumerate([
         ("数学训练题正确率 · 只代表训练数学表现", "training/math_accuracy_pct"),
         ("指令遵循细项 · IFBench", "evaluation/ifbench_pct"),
@@ -161,6 +165,7 @@ def construct(index, refs=None):
             ws.Section(name="先看这里：六领域整体评测", is_open=True,
                        panels=[wr.MarkdownPanel(markdown=note, layout=wr.Layout(x=0,y=0,w=24,h=5)), *performance]),
             ws.Section(name="六领域正式评测 · 单位 %", is_open=True, panels=breakdown),
+            ws.Section(name="六领域训练 · 学生与当前教师差异（不是正确率）", is_open=True, panels=domain_training),
             ws.Section(name="教师推进与训练诊断", is_open=False, panels=diagnostics),
         ])
     table = ["| 实验 | 已记录训练进度 | 最新完整评测检查点 | 六领域评测均分 |",
@@ -196,6 +201,9 @@ def construct(index, refs=None):
               wr.P("这里只比较普通 MOPD＋归一化与渐进式教师＋归一化。训练步数按最近同步的日志显示，最终评测未齐时不提前判输赢。"),
               grid(current,"同归一化配方的主对照",[panel("六领域评测均分 · 等待完整评测","evaluation/macro6_pct",percent=True)]),
               wr.H2("正式评测分项"),grid(primary,"1.7B 学生实验",breakdown),
+              wr.H2("六领域训练过程"),
+              wr.P("逐领域显示 bridge/abs_k1：学生与当前教师在生成 token 上的 log 概率差绝对值的均值。它衡量对当前教师的贴近程度，不是正确率，也不能单凭它判断能力。教师切换或推进时目标会变，因此需结合教师强度与正式评测看。显示原始值及 EMA 0.6。"),
+              grid(primary,"六领域学生训练诊断",domain_training),
               wr.H2("教师推进和训练稳定性",collapsed_blocks=[grid(primary,"1.7B 学生实验",diagnostics)]),
     ]
     if injected:
@@ -242,7 +250,7 @@ def main():
     print("DASHBOARD REPORT",report.url,flush=True)
     # Reload native saved objects to verify that filters and chart definitions survived saving.
     loaded=ws.Workspace.from_url(workspace.url)
-    assert len(loaded.sections)==3
+    assert len(loaded.sections)==4
     loaded_report=wr.Report.from_url(report.url)
     assert loaded_report.title==TITLE
     print("VERIFIED NATIVE W&B OVERVIEW",flush=True)
