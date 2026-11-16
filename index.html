@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Bridge-MOPD 实验曲线</title>
+  <meta name="description" content="比较 H800、B200 与旧机器实验的训练曲线和评测成绩。">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header><div><span class="eyebrow">BRIDGE-MOPD · EXPERIMENTS</span><h1>实验曲线</h1><p id="snapshot">正在读取数据…</p></div><span class="snapshot-badge">数据快照</span></header>
+  <main>
+    <aside>
+      <div class="aside-head"><h2>选择实验</h2><button id="clear" type="button">清空</button></div>
+      <label class="sr-only" for="search">搜索实验</label><input id="search" type="search" placeholder="搜索实验、模型或机器">
+      <div class="filters"><label>机器<select id="machine"><option value="">全部机器</option></select></label><label>记录<select id="kind"><option value="">全部记录</option><option>训练</option><option>评测与分析</option></select></label></div>
+      <p class="muted" id="counts"></p><div id="runs" aria-label="实验列表"></div>
+    </aside>
+    <section class="workspace">
+      <div class="toolbar"><div><h2>曲线对比</h2><p class="muted">横轴为训练步数。每个点都来自原始记录。</p></div><button id="download" class="primary" type="button">下载选中数据</button></div>
+      <div class="controls"><label class="metric-label">主图指标<input id="metric" list="metrics" value="actor/distillation/abs_loss" autocomplete="off"><datalist id="metrics"></datalist></label><label>平滑 <output id="smooth-value">0%</output><input id="smooth" type="range" min="0" max="95" step="5" value="0"></label></div>
+      <div id="legend" class="legend"></div><p id="message" role="status"></p>
+      <div class="plot-wrap"><h3 id="main-title">蒸馏 loss</h3><canvas id="main-chart" aria-label="所选实验主指标曲线"></canvas><div id="main-detail" class="detail"></div></div>
+      <div class="secondary-grid"><div class="plot-wrap"><h3>梯度范数</h3><canvas id="grad-chart" aria-label="梯度范数曲线"></canvas><div id="grad-detail" class="detail"></div></div><div class="plot-wrap"><h3>平均回答长度</h3><canvas id="length-chart" aria-label="平均回答长度曲线"></canvas><div id="length-detail" class="detail"></div></div></div>
+      <div class="table-wrap"><table><thead><tr><th>实验</th><th>最后记录步数</th><th>主指标最后值</th><th>可用指标</th></tr></thead><tbody id="summary"></tbody></table></div>
+      <p class="footnote">评测只有实际完成的几个点；训练中缺失的区间不补数值。旧版 bug、错误配置与工程测试保留原标签。不同规模、数据集和评测协议的成绩需分别比较。公网页为快照，本机 TensorBoard 持续更新。</p>
+    </section>
+  </main>
+  <footer><span>训练、教师比例、回答长度、计算耗时与评测分数</span><span id="footer-count"></span></footer>
+  <script src="app.js" defer></script>
+</body>
+</html>
