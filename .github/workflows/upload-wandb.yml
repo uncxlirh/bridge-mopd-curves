@@ -1,0 +1,27 @@
+name: Import histories into official W&B
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['data/**']
+permissions:
+  contents: read
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      WANDB_API_KEY: ${{ secrets.WANDB_BACKFILL_API_KEY }}
+      WANDB_MODE: online
+      WANDB_SILENT: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install official W&B client
+        run: pip install wandb==0.26.0
+      - name: Upload saved metrics
+        run: python upload_to_wandb.py
