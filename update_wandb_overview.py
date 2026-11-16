@@ -16,6 +16,17 @@ BASE = f"https://wandb.ai/{ENTITY}/{PROJECT}"
 TITLE = "渐进式教师实验总览"
 
 
+def public_url(url):
+    # SDK 0.4.13 returns Forge URLs without its required /wandb route.
+    # The legacy public host redirects to the correct frontend route.
+    from urllib.parse import urlsplit, urlunsplit
+    parts = urlsplit(url)
+    if parts.netloc == "forge.coreweave.com":
+        path = parts.path.removeprefix("/wandb")
+        return urlunsplit(("https", "wandb.ai", path, parts.query, parts.fragment))
+    return url
+
+
 def run_id(record):
     return "bf" + hashlib.sha256(record["name"].encode()).hexdigest()[:14]
 
@@ -238,16 +249,16 @@ def main():
         old.name,old.sections,old.settings,old.runset_settings=workspace.name,workspace.sections,workspace.settings,workspace.runset_settings
         workspace=old
     workspace.save()
-    refs["workspace"]=workspace.url
+    refs["workspace"]=public_url(workspace.url)
     file.write_text(json.dumps(refs,ensure_ascii=False,indent=2))
-    print("DASHBOARD WORKSPACE",workspace.url,flush=True)
+    print("DASHBOARD WORKSPACE",refs["workspace"],flush=True)
     if refs.get("report"):
         old=wr.Report.from_url(refs["report"]);old.title,old.description,old.blocks,old.width=report.title,report.description,report.blocks,report.width
         report=old
     report.save()
-    refs["report"]=report.url
+    refs["report"]=public_url(report.url)
     file.write_text(json.dumps(refs,ensure_ascii=False,indent=2))
-    print("DASHBOARD REPORT",report.url,flush=True)
+    print("DASHBOARD REPORT",refs["report"],flush=True)
     # Reload native saved objects to verify that filters and chart definitions survived saving.
     loaded=ws.Workspace.from_url(workspace.url)
     assert len(loaded.sections)==4

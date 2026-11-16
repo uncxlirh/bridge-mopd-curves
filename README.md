@@ -1,6 +1,6 @@
 # Bridge-MOPD 官方 W&B 补传
 
-[打开六领域实验总览](https://forge.coreweave.com/chenxheee-sjtu-hpc-center/bridge_mopd/reports/渐进式教师实验总览--VmlldzoxODMxNzAwNA==)
+[打开六领域实验总览](https://wandb.ai/chenxheee-sjtu-hpc-center/bridge_mopd/reports/渐进式教师实验总览--VmlldzoxODMxNzAwNA==)
 
 先看数学、代码、医学、法律、金融、指令遵循的正式评测，再看六领域均分。指令遵循取 IFBench 和 IFEval 平均，两个细项另行保留。表格按同一检查点列分数；缺失项显示 —，不按零分处理。曲线横轴是原始训练步数，评测不平滑、不补点。
 
