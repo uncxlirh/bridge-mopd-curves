@@ -14,6 +14,8 @@ def main():
                     "SFT教师", "IF教师_", "GRPO教师"]
         if any(word in record["name"] for word in excluded):
             continue
+        if not any(word in record["name"] for word in ["MOPD", "mopd", "渐进式教师", "q17_adapt", "q17_vanilla"]):
+            continue
         recovered_curve = "4B_TA_MOPD_历史记录" in record["name"]
         if record["kind"] != "训练" and not recovered_curve:
             continue
