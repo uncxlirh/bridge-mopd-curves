@@ -2,6 +2,7 @@
 import hashlib
 import argparse
 import json
+import math
 from pathlib import Path
 
 import wandb
@@ -66,9 +67,17 @@ def refresh_aliases(api, records):
         for key, points in derived.items():
             for step, value in points:
                 rows.setdefault(str(step), {})[key] = value
-        previous = public.summary.get("overview_import_state", {})
-        if isinstance(previous, str):
-            previous = json.loads(previous)
+        # History is authoritative: summary can be reshaped by another importer.
+        previous, raw_previous = {}, {}
+        for item in public.scan_history(page_size=1000):
+            for axis, target, prefixes in [("plot/step", previous, ("training/", "evaluation/", "diagnostics/", "schedule/", "performance/")),
+                                            ("train/step", raw_previous, ("eval/",))]:
+                value = item.get(axis)
+                if not isinstance(value, (int, float)) or not math.isfinite(value):
+                    continue
+                cells = {k:v for k,v in item.items() if k.startswith(prefixes)
+                         and isinstance(v, (int,float)) and math.isfinite(v)}
+                target.setdefault(str(int(value)), {}).update(cells)
         changes = {}
         for step, values in rows.items():
             changed = {k: v for k, v in values.items() if previous.get(step, {}).get(k) != v}
@@ -82,14 +91,6 @@ def refresh_aliases(api, records):
             if key.startswith("eval/"):
                 for step, value in points:
                     raw_rows.setdefault(str(step), {})[key] = value
-        raw_previous = public.summary.get("raw_evaluation_import_state")
-        if raw_previous is None:
-            raw_previous = {}
-            if raw_rows:
-                for item in public.history(samples=10000, pandas=False):
-                    if "train/step" in item:
-                        step = str(int(item["train/step"]))
-                        raw_previous.setdefault(step, {}).update({k:v for k,v in item.items() if k.startswith("eval/")})
         raw_changes = {int(step): {k:v for k,v in values.items() if raw_previous.get(step, {}).get(k) != v}
                        for step,values in raw_rows.items()}
         raw_changes = {s:v for s,v in raw_changes.items() if v}
@@ -104,8 +105,6 @@ def refresh_aliases(api, records):
                 run.log({"train/step": step, **values})
             for step, values in sorted(changes.items()):
                 run.log({"plot/step": step, **values})
-            run.summary["overview_import_state"] = rows
-            run.summary["raw_evaluation_import_state"] = raw_rows
             run.summary["train/step"] = int(run.summary.get("raw_import_last_source_step", record["lastStep"]))
             run.finish()
         print("OVERVIEW METRICS", record.get("display_name"), "changed steps", len(changes), flush=True)
@@ -120,8 +119,8 @@ def construct(index, refs=None):
     established = [r for r in records if not r["overview"]["normalized"] and "注入" not in r["name"]]
     injected = [r for r in records if "注入" in r["name"]]
     primary = established + current
-    performance = [panel("六领域评测均分 · 看整体效果", "evaluation/macro6_pct", percent=True),
-                   panel("数学训练题正确率 · 看学习过程", "training/math_accuracy_pct", percent=True, smooth=True, position=1)]
+    performance = [panel("六领域评测均分 · 看整体效果", "evaluation/macro6_pct", percent=True)]
+    performance[0].layout.w = 24
     for item in performance:
         item.layout.y += 5
     breakdown = [panel(title, key, percent=True, position=i) for i, (title, key) in enumerate([
@@ -130,10 +129,12 @@ def construct(index, refs=None):
         ("医疗评测 · MedQA", "evaluation/medqa_pct"),
         ("法律评测 · CaseHOLD", "evaluation/casehold_pct"),
         ("金融评测 · FinQA", "evaluation/finqa_pct"),
-        ("指令遵循评测 · IFBench", "evaluation/ifbench_pct"),
-        ("指令遵循评测 · IFEval", "evaluation/ifeval_pct"),
+        ("指令遵循评测 · IFBench/IFEval 平均", "evaluation/instruction_following_pct"),
     ])]
     diagnostics = [panel(title, key, position=i) for i, (title, key) in enumerate([
+        ("数学训练题正确率 · 只代表训练数学表现", "training/math_accuracy_pct"),
+        ("指令遵循细项 · IFBench", "evaluation/ifbench_pct"),
+        ("指令遵循细项 · IFEval", "evaluation/ifeval_pct"),
         ("学生训练所用医疗教师强度 λ", "schedule/med_lambda"),
         ("学生训练所用法律教师强度 λ", "schedule/law_lambda"),
         ("梯度范数 · 裁剪前", "diagnostics/gradient_norm"),
@@ -143,11 +144,12 @@ def construct(index, refs=None):
         ("数学题占当批题目的比例 · %", "training/math_prompt_share_pct"),
         ("每步耗时 · 秒", "performance/step_seconds"),
     ])]
-    note = ("### 先看这两类图\n\n"
-            "**正式评测**用来判断最终能力；**数学训练题正确率**用来观察训练中有没有学得更快。\n\n"
-            "数学训练题正确率已排除其他五域的零分占位，单位是百分比；图中显示单步值及 EMA 0.6，原始 `critic/score/mean` 不再放在主区。训练仍优化蒸馏目标，这个正确率记录学生答题表现。\n\n"
-            "评测只显示实际完成的检查点，不平滑、不补中间分数。最新实验空白表示评测尚未完成，不是零分。\n\n"
-            "不同教师强度下的 loss 目标不同，只用于诊断。W&B 的 Finished 表示本次补传结束，训练是否完成看表中的已记录步数。")
+    note = ("### 先看六领域正式评测，再看整体均分\n\n"
+            "**数学、代码、医学、法律、金融、指令遵循**分别展示，不能用数学训练分数代表所有领域。六领域均分用于看整体提升，分项用于看收益和退化发生在哪里。\n\n"
+            "指令遵循分数是 IFBench 与 IFEval 的平均；两项原始分数保留在诊断区。比较同一起点、同一配方、同一检查点的实验。\n\n"
+            "评测只显示实际完成的检查点，不平滑、不补中间分数。空白表示尚无已完成评测，不是零分。\n\n"
+            "训练区的数学正确率只反映数学训练题；其他领域没有同口径的在线正确率，不能从 critic 推算。不同教师目标下的 loss 也不能直接当能力分数。\n\n"
+            "W&B 的 Finished 表示补传结束，实际训练进度看表中的已记录步数。")
     workspace = ws.Workspace(entity=ENTITY, project=PROJECT, name="1.7B 渐进式教师主对照",
         auto_generate_panels=False,
         settings=ws.WorkspaceSettings(x_axis="plot/step", smoothing_type="none", smoothing_weight=0,
@@ -156,9 +158,9 @@ def construct(index, refs=None):
             run_settings=settings(primary), pinned_columns=["run:displayName", "config:recorded_step.value",
                                                             "summary:evaluation/checkpoint_step", "summary:evaluation/macro6_pct"]),
         sections=[
-            ws.Section(name="先看这里：训练表现与正式评测", is_open=True,
+            ws.Section(name="先看这里：六领域整体评测", is_open=True,
                        panels=[wr.MarkdownPanel(markdown=note, layout=wr.Layout(x=0,y=0,w=24,h=5)), *performance]),
-            ws.Section(name="正式评测分项 · 单位 %", is_open=False, panels=breakdown),
+            ws.Section(name="六领域正式评测 · 单位 %", is_open=True, panels=breakdown),
             ws.Section(name="教师推进与训练诊断", is_open=False, panels=diagnostics),
         ])
     table = ["| 实验 | 已记录训练进度 | 最新完整评测检查点 | 六领域评测均分 |",
@@ -172,11 +174,10 @@ def construct(index, refs=None):
               wr.MarkdownBlock(note), wr.H1("已有实验的正式评测"), wr.MarkdownBlock("\n".join(table)),
               wr.P("六领域均分 = mean(数学、代码、医疗、法律、金融、(IFBench + IFEval)/2)。不同检查点和不同配方分开比较。"),
               wr.P("数学与代码使用 DN-MOPD 8K、不思考的评测；其余使用 IM-MOPD avg@3、开启思考。IFBench 是宽松 prompt 级准确率，IFEval 是严格 prompt 级准确率。"),
-              grid(established,"不归一化的已有对照",[panel("六领域评测均分 · %","evaluation/macro6_pct",percent=True),
-                    panel("数学训练题正确率 · %","training/math_accuracy_pct",percent=True,smooth=True,position=1)]),
+              grid(established,"不归一化的已有对照",[panel("六领域评测均分 · %","evaluation/macro6_pct",percent=True)]),
               wr.H1("最新归一化对照"),
               wr.P("这里只比较普通 MOPD＋归一化与渐进式教师＋归一化。训练步数按最近同步的日志显示，最终评测未齐时不提前判输赢。"),
-              grid(current,"同归一化配方的主对照",[panel("数学训练题正确率 · %","training/math_accuracy_pct",percent=True,smooth=True)]),
+              grid(current,"同归一化配方的主对照",[panel("六领域评测均分 · 等待完整评测","evaluation/macro6_pct",percent=True)]),
               wr.H2("正式评测分项"),grid(primary,"1.7B 学生实验",breakdown),
               wr.H2("教师推进和训练稳定性",collapsed_blocks=[grid(primary,"1.7B 学生实验",diagnostics)]),
     ]
@@ -192,7 +193,7 @@ def construct(index, refs=None):
             panel("数学训练题正确率 · %","training/math_accuracy_pct",percent=True,smooth=True,position=1)])]))
     blocks.append(wr.P("展示组织参考 MiMo RL 页：训练表现与 benchmark 分区、定义清楚、同实验固定颜色。指标计算仍使用本项目真实口径。"))
     report = wr.Report(entity=ENTITY, project=PROJECT, title=TITLE,
-                      description="正式评测、数学训练表现与教师推进分开查看", width="fluid", blocks=blocks)
+                      description="六领域正式评测与整体均分；训练表现作为诊断", width="fluid", blocks=blocks)
     return workspace, report
 
 
