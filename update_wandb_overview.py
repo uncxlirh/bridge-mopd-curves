@@ -112,7 +112,8 @@ def refresh_aliases(api, records):
 
 
 def construct(index, refs=None):
-    records = [r for r in index["runs"] if r.get("overview", {}).get("scale") == "1.7B"]
+    records = [r for r in index["runs"] if r.get("overview", {}).get("scale") == "1.7B"
+               and r["overview"].get("method") in {"plain", "progressive"}]
     if not records:
         raise ValueError("Missing prepared overview metadata; run export_wandb_curves.py before publishing")
     current = [r for r in records if r["overview"]["normalized"]]
