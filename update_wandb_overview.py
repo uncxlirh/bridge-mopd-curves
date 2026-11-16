@@ -45,6 +45,8 @@ def runset(records, title):
 
 
 def grid(records, title, panels):
+    if len(panels) == 1:
+        panels[0].layout.w = 24
     return wr.PanelGrid(runsets=[runset(records, title)], panels=panels)
 
 
