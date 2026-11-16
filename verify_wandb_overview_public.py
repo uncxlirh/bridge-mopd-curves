@@ -55,4 +55,21 @@ for run, metric in [("bf73d3a9cbb33325", "training/math_accuracy_pct"),
     if metric.startswith("evaluation/"):
         assert any(p["plot/step"] == 100 and abs(p[metric]-41.47)<.01 for p in points)
     print("ANONYMOUS REAL CURVE", metric, points, flush=True)
+for metric in sorted(required):
+    result = query(history_query, {**VARIABLES, "run": "bf73d3a9cbb33325",
+        "specs": [json.dumps({"keys": ["plot/step", metric], "samples": 3})]})
+    points = result["project"]["run"]["sampledHistory"][0]
+    if isinstance(points, str):
+        points = json.loads(points)
+    assert points and all(0 <= p[metric] <= 100 for p in points), metric
+    print("ANONYMOUS DOMAIN EVALUATION", metric, points, flush=True)
+for domain in ["math", "code", "med", "law", "fin", "if"]:
+    metric = "bridge/abs_k1/"+domain
+    result = query(history_query, {**VARIABLES, "run": "bf3adff1d85d08f6",
+        "specs": [json.dumps({"keys": ["train/step", metric], "samples": 3})]})
+    points = result["project"]["run"]["sampledHistory"][0]
+    if isinstance(points, str):
+        points = json.loads(points)
+    assert points and all(p[metric] >= 0 for p in points), metric
+    print("ANONYMOUS DOMAIN TRAINING", metric, points, flush=True)
 print("VERIFIED NATIVE REPORT", len(panels), "line charts; original training steps; unsmoothed evaluations", flush=True)
