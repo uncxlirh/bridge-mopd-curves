@@ -1,0 +1,16 @@
+name: Set W&B project to Open
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      WANDB_API_KEY: ${{ secrets.WANDB_BACKFILL_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 set_wandb_open.py
