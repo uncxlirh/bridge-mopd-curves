@@ -1,0 +1,32 @@
+name: Check official W&B connectivity
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  connectivity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Probe W&B API without credentials
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import urllib.request, urllib.error, json
+          request = urllib.request.Request(
+              'https://api.wandb.ai/graphql',
+              headers={'Content-Type': 'application/json', 'User-Agent': 'wandb-connectivity-check'},
+              data=b'{"query":"{ __typename }"}',
+          )
+          try:
+              response = urllib.request.urlopen(request, timeout=20)
+          except urllib.error.HTTPError as error:
+              response = error
+          body = response.read(800).decode(errors='replace')
+          print('W&B API HTTP status:', response.status)
+          print('Content type:', response.headers.get('Content-Type'))
+          print('Response:', body)
+          if response.status not in (200, 400, 401):
+              raise SystemExit('API connectivity not established')
+          print('Official W&B API is reachable from this runner. No API key was sent.')
+          PY
