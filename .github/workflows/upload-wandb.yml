@@ -14,6 +14,7 @@ jobs:
       WANDB_API_KEY: ${{ secrets.WANDB_BACKFILL_API_KEY }}
       WANDB_MODE: online
       WANDB_SILENT: 'true'
+      WANDB_BASE_URL: https://api.wandb.ai
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,7 +22,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install official W&B client
-        run: pip install wandb==0.26.0
+      - name: Install official W&B clients
+        run: pip install wandb==0.31.0 wandb-workspaces==0.4.13
       - name: Upload saved metrics
         run: python upload_to_wandb.py
+      - name: Update native W&B overview
+        run: python update_wandb_overview.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wandb-overview-refs
+          path: dashboard_refs.json

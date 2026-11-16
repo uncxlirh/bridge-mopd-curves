@@ -20,7 +20,6 @@ def main():
         if record["kind"] != "训练" and not recovered_curve:
             continue
         metrics = json.loads(Path("data", record["id"] + ".json").read_text())["metrics"]
-        metrics = {tag: values for tag, values in metrics.items() if len(values) >= 2}
         rows = {}
         for tag, points in metrics.items():
             for step, value in points:
@@ -32,21 +31,25 @@ def main():
         if recovered_curve:
             tags.append("recovered-evaluation-curve")
         run = wandb.init(
-            project="bridge_mopd", id=run_id, name=record["name"],
+            project="bridge_mopd", id=run_id, name=record.get("display_name", record["name"]),
             resume="allow", mode="online", group=record["machine"],
-            tags=tags, job_type="historical-metrics-import", save_code=False,
+            tags=tags, job_type="historical-metrics-import", save_code=False, allow_val_change=True,
             config={"snapshot_time": index["updated"], "source": "saved TensorBoard scalar histories",
                     "machine": record["machine"], "record_type": record["kind"],
+                    "original_run_label": record["name"], **record.get("overview", {}),
                     "note": "Use train/step for the original training step. Import timestamps are not training timestamps."},
             settings=wandb.Settings(disable_git=True, disable_code=True, x_disable_meta=True,
                                     x_disable_stats=True, console="off", init_timeout=90),
         )
         run.define_metric("train/step")
         run.define_metric("*", step_metric="train/step")
-        next_step = run.step
+        # Source training steps must stay independent of W&B's internal history
+        # counter: descriptive/derived charts can append additional history rows.
+        last_source_step = int(run.summary.get("raw_import_last_source_step", run.summary.get("train/step", -1)))
         for step, values in sorted(rows.items()):
-            if step >= next_step:
-                run.log({**values, "train/step": step}, step=step)
+            if step > last_source_step:
+                run.log({**values, "train/step": step})
+        run.summary["raw_import_last_source_step"] = max(last_source_step, max(rows))
         url = run.url
         run.finish()
         uploaded.append({"name": record["name"], "run_id": run_id, "url": url, "last_step": max(rows)})
