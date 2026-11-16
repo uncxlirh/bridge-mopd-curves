@@ -1,0 +1,22 @@
+name: Update native W&B overview views
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  overview:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    env:
+      WANDB_API_KEY: ${{ secrets.WANDB_BACKFILL_API_KEY }}
+      WANDB_BASE_URL: https://api.wandb.ai
+      WANDB_SILENT: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install wandb==0.31.0 wandb-workspaces==0.4.13
+      - run: python update_wandb_overview.py --views-only

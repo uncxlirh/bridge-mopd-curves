@@ -1,5 +1,6 @@
 """Configure native W&B workspaces/reports and clearly defined metric aliases."""
 import hashlib
+import argparse
 import json
 from pathlib import Path
 
@@ -110,6 +111,8 @@ def refresh_aliases(api, records):
 
 def construct(index, refs=None):
     records = [r for r in index["runs"] if r.get("overview", {}).get("scale") == "1.7B"]
+    if not records:
+        raise ValueError("Missing prepared overview metadata; run export_wandb_curves.py before publishing")
     current = [r for r in records if r["overview"]["normalized"]]
     established = [r for r in records if not r["overview"]["normalized"] and "注入" not in r["name"]]
     injected = [r for r in records if "注入" in r["name"]]
@@ -140,7 +143,8 @@ def construct(index, refs=None):
     note = ("### 先看这两类图\n\n"
             "**正式评测**用来判断最终能力；**数学训练题正确率**用来观察训练中有没有学得更快。\n\n"
             "数学训练题正确率已排除其他五域的零分占位，单位是百分比；图中显示单步值及 EMA 0.6，原始 `critic/score/mean` 不再放在主区。训练仍优化蒸馏目标，这个正确率记录学生答题表现。\n\n"
-            "评测只显示实际完成的检查点，不平滑、不补中间分数。最新实验空白表示评测尚未完成，不是零分。")
+            "评测只显示实际完成的检查点，不平滑、不补中间分数。最新实验空白表示评测尚未完成，不是零分。\n\n"
+            "不同教师强度下的 loss 目标不同，只用于诊断。W&B 的 Finished 表示本次补传结束，训练是否完成看表中的已记录步数。")
     workspace = ws.Workspace(entity=ENTITY, project=PROJECT, name="1.7B 渐进式教师主对照",
         auto_generate_panels=False,
         settings=ws.WorkspaceSettings(x_axis="plot/step", smoothing_type="none", smoothing_weight=0,
@@ -164,12 +168,12 @@ def construct(index, refs=None):
     blocks = [wr.P("更新于 "+index["updated"]+"。仅展示学生 MOPD 实验及其对照。"),
               wr.MarkdownBlock(note), wr.H1("已有实验的正式评测"), wr.MarkdownBlock("\n".join(table)),
               wr.P("六领域均分 = mean(数学、代码、医疗、法律、金融、(IFBench + IFEval)/2)。不同检查点和不同配方分开比较。"),
+              wr.P("数学与代码使用 DN-MOPD 8K、不思考的评测；其余使用 IM-MOPD avg@3、开启思考。IFBench 是宽松 prompt 级准确率，IFEval 是严格 prompt 级准确率。"),
               grid(established,"不归一化的已有对照",[panel("六领域评测均分 · %","evaluation/macro6_pct",percent=True),
                     panel("数学训练题正确率 · %","training/math_accuracy_pct",percent=True,smooth=True,position=1)]),
               wr.H1("最新归一化对照"),
               wr.P("这里只比较普通 MOPD＋归一化与渐进式教师＋归一化。训练步数按最近同步的日志显示，最终评测未齐时不提前判输赢。"),
-              grid(current,"同归一化配方的主对照",[panel("数学训练题正确率 · %","training/math_accuracy_pct",percent=True,smooth=True),
-                    panel("蒸馏绝对 loss","diagnostics/distillation_abs_loss",position=1)]),
+              grid(current,"同归一化配方的主对照",[panel("数学训练题正确率 · %","training/math_accuracy_pct",percent=True,smooth=True)]),
               wr.H2("正式评测分项"),grid(primary,"1.7B 学生实验",breakdown),
               wr.H2("教师推进和训练稳定性",collapsed_blocks=[grid(primary,"1.7B 学生实验",diagnostics)]),
     ]
@@ -190,9 +194,13 @@ def construct(index, refs=None):
 
 
 def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--views-only",action="store_true")
+    args=parser.parse_args()
     index=json.loads(Path("data/index.json").read_text())
-    api=wandb.Api()
-    refresh_aliases(api,index["runs"])
+    if not args.views_only:
+        api=wandb.Api()
+        refresh_aliases(api,index["runs"])
     workspace,report=construct(index)
     file=Path("dashboard_refs.json")
     refs=json.loads(file.read_text()) if file.exists() else {}
