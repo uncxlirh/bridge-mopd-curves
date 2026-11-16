@@ -10,7 +10,8 @@ def main():
     index = json.loads(Path("data/index.json").read_text())
     uploaded = []
     for record in index["runs"]:
-        excluded = ["工程测试", "bridge_smoke", "旧版卷积bug", "badconfig", "补充评测与分析"]
+        excluded = ["工程测试", "bridge_smoke", "旧版卷积bug", "badconfig", "补充评测与分析",
+                    "SFT教师", "IF教师_", "GRPO教师"]
         if any(word in record["name"] for word in excluded):
             continue
         recovered_curve = "4B_TA_MOPD_历史记录" in record["name"]
