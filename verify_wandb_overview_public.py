@@ -100,4 +100,13 @@ for run, metric, expected in [
         points = json.loads(points)
     assert any(p["plot/step"]==100 and abs(p[metric]-expected)<.0001 for p in points), (metric,points)
     print("ANONYMOUS FINAL AND RECOVERY", run, metric, points, flush=True)
+for metric in ["trajectory/dn_med_weight", "trajectory/dn_law_weight", "trajectory/distillation_abs_loss", "controller/threshold"]:
+    result=query(history_query,{**VARIABLES,"run":"bf3adff1d85d08f6",
+        "specs":[json.dumps({"keys":["plot/step",metric],"samples":1000})]})
+    points=result["project"]["run"]["sampledHistory"][0]
+    if isinstance(points,str):points=json.loads(points)
+    assert {p["plot/step"] for p in points}==set(range(1,101)),(metric,len(points))
+    if metric.startswith("trajectory/dn_"):
+        assert all(.25<=p[metric]<=4 for p in points)
+    print("VERIFIED 100 ACTUAL SOURCE STEPS",metric,flush=True)
 print("VERIFIED NATIVE REPORT", len(panels), "line charts; original training steps; unsmoothed evaluations", flush=True)
