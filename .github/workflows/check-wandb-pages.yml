@@ -1,6 +1,9 @@
 name: Check public W&B pages in browser
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [check_wandb_pages.py, .github/workflows/check-wandb-pages.yml]
 permissions:
   contents: read
 jobs:
