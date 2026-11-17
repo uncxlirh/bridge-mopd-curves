@@ -1,13 +1,15 @@
 name: Check public W&B pages in browser
 on:
   workflow_dispatch:
-  push:
+  workflow_run:
+    workflows: [Import histories into official W&B, Update native W&B overview views]
+    types: [completed]
     branches: [main]
-    paths: [check_wandb_pages.py, .github/workflows/check-wandb-pages.yml]
 permissions:
   contents: read
 jobs:
   browser:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 8
     steps:

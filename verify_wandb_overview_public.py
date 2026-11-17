@@ -36,16 +36,13 @@ def walk(value):
         for child in value:
             walk(child)
 walk(spec)
-assert panels and all(p["xAxis"] in {"plot/step", "train/step"} for p in panels)
-assert bars
-assert all(not m.startswith("summary_metrics.") for p in bars for m in p["metrics"]), "Bar Chart requires literal summary keys, not summary_metrics prefix"
-assert not any(any(m.startswith(("recovery/", "comparison/", "evaluation_detail/")) or (m.startswith("evaluation/") and m != "evaluation/macro3_pct") for m in p["metrics"]) for p in panels)
-bar_metrics = {m.removeprefix("summary_metrics.") for p in bars for m in p["metrics"]}
+assert not panels, "The report should not contain diagnostic plot walls"
+assert len(bars)==2
+assert all(not m.startswith("summary_metrics.") for p in bars for m in p["metrics"])
+assert {m for p in bars for m in p["metrics"]} == {"checkpoint/40/gain/evaluation/macro6_pct", "checkpoint/100/gain/evaluation/macro6_pct"}
+serialized=json.dumps(spec,ensure_ascii=False)
+assert all(t in serialized for t in ["领域变化","完整分项成绩","**47.04**","**61.90**","**57.89**","**67.60**"])
 required = {"evaluation/"+k+"_pct" for k in ["math", "code", "medqa", "casehold", "finqa", "instruction_following"]}
-assert {"checkpoint/100/gain/"+m for m in required} <= bar_metrics
-assert {"checkpoint/40/gain/"+m for m in required} <= bar_metrics
-assert {"bridge/abs_k1/"+d for d in ["math","code","med","law","fin","if"]} <= {m for p in panels for m in p["metrics"]}
-assert "六领域正式评测结果" in json.dumps(spec, ensure_ascii=False)
 summary_query = """query($entity:String!, $project:String!, $run:String!) {
  project(name:$project, entityName:$entity) { run(name:$run) { summaryMetrics } }
 }"""

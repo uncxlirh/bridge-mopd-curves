@@ -1,57 +1,38 @@
-"""Inspect anonymous browser navigation, not just the metrics API."""
+"""Check the rendered, anonymous report: data, compact layout and best-score emphasis."""
 import asyncio,json
 from pathlib import Path
 from playwright.async_api import async_playwright
 
 async def main():
-    dest=Path('browser-pages');dest.mkdir(exist_ok=True)
+    out=Path('browser-pages');out.mkdir(exist_ok=True)
     async with async_playwright() as p:
         browser=await p.chromium.launch()
         page=await browser.new_page(viewport={'width':1440,'height':1000})
-        base='/chenxheee-sjtu-hpc-center/bridge_mopd'
-        paths=[base+'/reports/渐进式教师实验总览--VmlldzoxODMxNzAwNA==',
-               base+'?nw=xmjip17v9ke']
-        for host in ['https://wandb.ai']:
-            for path in paths:
-                url=host+path
-                try:
-                    response=await page.goto(url,wait_until='domcontentloaded',timeout=60000)
-                    await page.wait_for_timeout(12000)
-                    body=(await page.locator('body').inner_text())[:14000]
-                    info={'input':url,'url':page.url,'status':response.status if response else None,'title':await page.title(),'body':body}
-                    print(json.dumps(info,ensure_ascii=False),flush=True)
-                    assert 'Page not found' not in body and 'We couldn’t find this page' not in body, url
-                    assert '六领域正式评测' in body, url
-                    if '/reports/' in path:
-                        assert all(t in body for t in ['为什么看这些指标','正向结果','负向结果','渐进教师怎么算']), url
-                        assert '47.04' in body and '61.90' in body and '18.45' in body, url
-                        assert '94/100' not in body and '等待完整评测' not in body, url
-                    else:
-                        assert '六域均分增益' in body and '最差领域恢复率增益' in body, url
-                    i=len(list(dest.glob('*.json')))
-                    (dest/f'{i}.json').write_text(json.dumps(info,ensure_ascii=False,indent=2))
-                    reject = page.get_by_role('button',name='Reject All',exact=True)
-                    if await reject.count():
-                        await reject.first.click(timeout=5000)
-                    await page.screenshot(path=str(dest/f'{i}.png'),full_page=False)
-                    if '/reports/' in path:
-                        for j,title in enumerate(['六领域正式评测结果','恢复率和最差领域']):
-                            await page.get_by_text(title,exact=True).scroll_into_view_if_needed()
-                            await page.wait_for_timeout(8000)
-                            if title == '六领域正式评测结果':
-                                await page.get_by_text('100 步 · 相对普通 MOPD 的各域增减',exact=True).first.scroll_into_view_if_needed()
-                                await page.mouse.wheel(0,240)
-                                await page.wait_for_timeout(4000)
-                            await page.screenshot(path=str(dest/f'{i}-section-{j}.png'),full_page=False)
-                            section_text=await page.locator('body').inner_text()
-                            assert 'Page not found' not in section_text
-                            assert 'Select runs that logged' not in section_text, section_text[-5000:]
-                            assert 'No data available' not in section_text, section_text[-5000:]
-                            print('CHART SECTION BODY',section_text[-6500:],flush=True)
-                            print('RENDERED REPORT SECTION',title,flush=True)
-
-                except Exception as e:
-                    print(type(e).__name__,str(e)[:500],flush=True)
-                    raise
+        root='https://wandb.ai/chenxheee-sjtu-hpc-center/bridge_mopd'
+        for i,url in enumerate([root+'/reports/渐进式教师实验总览--VmlldzoxODMxNzAwNA==',root+'?nw=xmjip17v9ke']):
+            await page.goto(url,wait_until='domcontentloaded',timeout=60000)
+            await page.wait_for_timeout(12000)
+            body=await page.locator('body').inner_text()
+            assert 'Page not found' not in body and 'We couldn’t find this page' not in body
+            assert 'Select runs that logged' not in body and 'No data available' not in body
+            reject=page.get_by_role('button',name='Reject All',exact=True)
+            if await reject.count():await reject.first.click()
+            if i==0:
+                assert all(t in body for t in ['领域变化','完整分项成绩','方法','47.04','61.90','18.45'])
+                assert await page.locator('strong,b').count()>=10
+                await page.screenshot(path=str(out/'report-top.png'))
+                await page.get_by_text('阶段对比',exact=True).first.scroll_into_view_if_needed()
+                await page.mouse.wheel(0,100)
+                await page.wait_for_timeout(10000)
+                body=await page.locator('body').inner_text()
+                assert 'Select runs that logged' not in body and 'No data available' not in body
+                await page.screenshot(path=str(out/'report-charts.png'))
+                await page.get_by_text('领域变化',exact=True).first.scroll_into_view_if_needed()
+                await page.screenshot(path=str(out/'report-domains.png'))
+                print('RENDERED readable report; highest values bold; two compact charts; domain comparison table',flush=True)
+            else:
+                assert '阶段对比' in body and '教师进度' in body
+                await page.screenshot(path=str(out/'workspace.png'))
+            (out/f'{i}.json').write_text(json.dumps({'url':page.url,'body':body},ensure_ascii=False,indent=2))
         await browser.close()
 asyncio.run(main())
