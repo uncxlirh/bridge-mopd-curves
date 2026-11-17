@@ -30,6 +30,15 @@ async def main():
                     i=len(list(dest.glob('*.json')))
                     (dest/f'{i}.json').write_text(json.dumps(info,ensure_ascii=False,indent=2))
                     await page.screenshot(path=str(dest/f'{i}.png'),full_page=False)
+                    if '/reports/' in path:
+                        for j,title in enumerate(['六个领域分别看','恢复率和最差领域']):
+                            await page.get_by_text(title,exact=True).scroll_into_view_if_needed()
+                            await page.wait_for_timeout(8000)
+                            await page.screenshot(path=str(dest/f'{i}-section-{j}.png'),full_page=False)
+                            section_text=await page.locator('body').inner_text()
+                            assert 'Page not found' not in section_text
+                            print('RENDERED REPORT SECTION',title,flush=True)
+
                 except Exception as e:
                     print(type(e).__name__,str(e)[:500],flush=True)
                     raise
