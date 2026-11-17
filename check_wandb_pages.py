@@ -31,7 +31,17 @@ async def main():
                 await page.screenshot(path=str(out/'report-domains.png'))
                 print('RENDERED MiMo-style sections: pinned student metrics, separate evaluation, full student settings, score highlights',flush=True)
             else:
-                assert all(t in body for t in ['阶段对比','学生训练','各领域蒸馏信号','教师进度','DN 各领域乘子'])
+                # Workspaces virtualize sections outside the viewport. Inspect as we scroll.
+                required=['阶段对比','学生训练','各领域蒸馏信号','教师进度','DN 各领域乘子']
+                seen=body
+                await page.mouse.move(1380,700)
+                for _ in range(6):
+                    if all(t in seen for t in required):break
+                    await page.mouse.wheel(0,900)
+                    await page.wait_for_timeout(1000)
+                    seen+='\n'+await page.locator('body').inner_text()
+                assert all(t in seen for t in required), seen[-9000:]
+                body=seen
                 await page.screenshot(path=str(out/'workspace.png'))
             (out/f'{i}.json').write_text(json.dumps({'url':page.url,'body':body},ensure_ascii=False,indent=2))
         await browser.close()
