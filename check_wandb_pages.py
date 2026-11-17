@@ -23,7 +23,7 @@ async def main():
                     assert 'Page not found' not in body and 'We couldn’t find this page' not in body, url
                     assert '六领域正式评测' in body, url
                     if '/reports/' in path:
-                        assert '为什么切换教师' in body and '为什么还要加归一化' in body and '同行怎样讲贡献' in body, url
+                        assert all(t in body for t in ['为什么看这些指标','正向结果','负向结果','基本持平的结果','为什么做教师切换和归一化']), url
                         assert '47.04' in body and '61.90' in body and '18.45' in body, url
                         assert '94/100' not in body and '等待完整评测' not in body, url
                     else:
