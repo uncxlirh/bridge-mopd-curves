@@ -23,6 +23,7 @@ async def main():
                     assert 'Page not found' not in body and 'We couldn’t find this page' not in body, url
                     assert '六领域正式评测' in body, url
                     if '/reports/' in path:
+                        assert '为什么切换教师' in body and '为什么还要加归一化' in body and '同行怎样讲贡献' in body, url
                         assert '47.04' in body and '61.90' in body and '18.45' in body, url
                         assert '94/100' not in body and '等待完整评测' not in body, url
                     else:
@@ -31,7 +32,7 @@ async def main():
                     (dest/f'{i}.json').write_text(json.dumps(info,ensure_ascii=False,indent=2))
                     await page.screenshot(path=str(dest/f'{i}.png'),full_page=False)
                     if '/reports/' in path:
-                        for j,title in enumerate(['六个领域分别看','恢复率和最差领域']):
+                        for j,title in enumerate(['六领域正式评测结果','恢复率和最差领域']):
                             await page.get_by_text(title,exact=True).scroll_into_view_if_needed()
                             await page.wait_for_timeout(8000)
                             await page.screenshot(path=str(dest/f'{i}-section-{j}.png'),full_page=False)

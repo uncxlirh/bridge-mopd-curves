@@ -167,11 +167,7 @@ def construct(index, refs=None):
     styles = [panel(title+" · 正式评测平均回答长度", "evaluation_detail/"+key+"_response_tokens",position=i)
               for i,(title,key) in enumerate([("医学","medqa"),("法律","casehold"),("金融","finqa"),("IFBench","ifbench"),("IFEval","ifeval")])]
     styles.append(panel("IFEval · 正式评测截断率 %", "evaluation_detail/ifeval_truncated_pct",position=5))
-    guide = ("### 先看正式评测，再看恢复率和训练诊断\n\n"+notes["conclusion"]+"\n\n"
-             "六领域各占六分之一；指令遵循先平均 IFBench 与 IFEval。恢复率是补充视角，不替换原始分。\n\n"
-             "曲线只连接已完成的评测点，不平滑、不补中间成绩；本轮主要只有 40、100 步，不能读成完整学习曲线。"
-             "恢复率允许低于 0 或高于 100，图上不裁掉。\n\n"
-             "W&B Finished 表示补传完成，实际训练进度与评测检查点分别显示。")
+    guide = notes["conclusion"]
     workspace = ws.Workspace(entity=ENTITY,project=PROJECT,name="1.7B 渐进式教师主对照",
         auto_generate_panels=False,
         settings=ws.WorkspaceSettings(x_axis="plot/step",smoothing_type="none",smoothing_weight=0,max_runs=8,ignore_outliers=False),
@@ -202,27 +198,42 @@ def construct(index, refs=None):
     references=["| 固定参考端点 | "+" | ".join(t for t,k in domains)+" |","|---|"+"---:|"*6]
     for kind,title in [("base","原始学生"),("teacher","各域教师组合")]:
         references.append("| "+title+" | "+" | ".join(f"{analysis['reference'][kind][k]:.4f}" for t,k in domains)+" |")
-    blocks=[wr.P("结果核对于 2026 年 11 月 17 日；数据同步于 "+index["updated"]+"。六组 1.7B 学生均已训练并评测到 100 步。"),
-            wr.MarkdownBlock(guide),wr.H1("六领域正式评测结果"),wr.MarkdownBlock("\n".join(final)),
-            wr.P("七项 benchmark 对应六领域；指令遵循两项先平均。表中所有最终分数对应第 100 步，未以不同检查点混拼。"),
-            wr.P("数学/代码：DN-MOPD 8K、关闭思考；其余五项：IM-MOPD avg@3、开启思考。IFBench 为 prompt-loose，IFEval 为 prompt-strict。"),
-            grid(primary,"同原始起点 · 五组完整对照",overall),
-            wr.H1("六个领域分别看"),grid(primary,"正式评测分项",breakdown),
-            wr.H1("恢复率和最差领域"),wr.P(notes["definitions"]),wr.P(notes["positive"]),grid(primary,"六域恢复率",recoveries),
-            wr.H1("较早检查点与最终结果"),wr.MarkdownBlock("\n".join(early)),wr.P(notes["curves"]),
-            wr.H2("归一化配方内比较"),wr.P("这两组都只接入 DN 的按领域缩放组件，其余仍为本项目六教师配方。"),
-            grid(current,"普通＋DN 对渐进＋DN",[panel("六域原始均分 · 同 DN 配方","evaluation/macro6_pct",percent=True),recovery_panel("最差领域恢复率 · 同 DN 配方","recovery/worst_pct",1)]),
-            wr.H2("教师实际如何推进",collapsed_blocks=[wr.P(notes["controller"]),grid(primary,"实际使用的教师与训练诊断",diagnostics)]),
-            wr.H2("DN 乘子和两种方法的关系",collapsed_blocks=[wr.P(notes["normalization"]),grid(current,"DN 逐领域乘子",dn)]),
-            wr.H2("六领域训练过程",collapsed_blocks=[wr.P(notes["critic"]),grid(primary,"学生到当前教师的差异",domain_training)]),
-            wr.H2("注入起点与回答风格",collapsed_blocks=[wr.P(notes["injection"]),grid(records,"正式评测回答长度与截断率",styles),grid(injected,"注入组单列",[panel("注入组六域均分","evaluation/macro6_pct",percent=True),recovery_panel("注入组最差恢复率 · 不裁掉负值","recovery/worst_pct",1)])]),
-            wr.H2("token 差异分析的证据边界",collapsed_blocks=[wr.P(notes["kl"])]),
-            wr.H2("分数定义和固定参考",collapsed_blocks=[wr.P(notes["reading"]),wr.MarkdownBlock("\n".join(references)),wr.P(notes["reference_note"]),wr.MarkdownBlock(notes["literature"])]),
-            wr.H2("实际训练与评测进度",collapsed_blocks=[wr.MarkdownBlock("\n".join(progress)),wr.P("训练和评测于 11 月 16 日晚完成；11 月 17 日核对并更新。W&B 的补传时间不作为原始训练时间。")]),
+    summary = ["| 第 100 步主对照 | 六域原始均分 | 平均恢复率 | 最差恢复率 |",
+               "|---|---:|---:|---:|"]
+    raw = ["| 100 步实验 | 数学 | 代码 | 医学 | 法律 | 金融 | IFBench | IFEval |",
+           "|---|---:|---:|---:|---:|---:|---:|---:|"]
+    for r in analysis["records"]:
+        v=r["checkpoints"]["100"]
+        if r["key"] in {"q17_vanilla100","q17_vanilla_dn100","q17_adaptnc100","q17_best_dn100"}:
+            summary.append(f"| {r['label']} | {v['evaluation/macro6_pct']:.2f} | {v['recovery/mean_pct']:.2f} | {v['recovery/worst_pct']:.2f} |")
+        raw.append("| "+r["label"]+" | "+" | ".join(f"{v['evaluation/'+k+'_pct']:.2f}" for k in ["math","code","medqa","casehold","finqa","ifbench","ifeval"])+" |")
+    blocks=[
+        wr.P("更新于 2026 年 11 月 17 日。六组 1.7B 实验已完成 100 步训练与正式评测；数据同步于 "+index["updated"]+"。"),
+        wr.H1("我们研究什么"),wr.P(notes["talk_track"]),
+        wr.H1("为什么切换教师"),wr.P(notes["motivation"]),wr.P(notes["bridge_plain"]),wr.P(notes["switch_plain"]),
+        wr.H1("为什么还要加归一化"),wr.P(notes["dn_plain"]),wr.P(notes["dn_reason"]),wr.MarkdownBlock(notes["method_table"]),
+        wr.H1("同行怎样讲贡献"),wr.P(notes["peer_reading"]),wr.MarkdownBlock(notes["peer_table"]),
+        wr.H1("我们的贡献和结果"),wr.P(guide),wr.P(notes["contributions"]),wr.MarkdownBlock(notes["claims_table"]),
+        wr.MarkdownBlock("\n".join(summary)),
+        wr.H1("先看哪些指标"),wr.P(notes["metric_guide"]),wr.P(notes["definitions"]),
+        grid(primary,"相同原始起点 · 主对照",overall),
+        wr.H1("六领域正式评测结果"),wr.MarkdownBlock("\n".join(raw)),
+        wr.P("收益主要在医疗、法律；IF 和金融的变化也一并列出。七个 benchmark 对应六领域，IF 两项先平均。"),
+        grid(primary,"六领域正式评测",breakdown),
+        wr.H1("恢复率和最差领域"),wr.P("恢复率把原始学生放在 0%、各域教师放在 100%。看六张分项图，可以分清平均恢复提高来自哪些领域。"),grid(primary,"六域恢复率",recoveries),
+        wr.H1("第 40 步已经学到了多少"),wr.MarkdownBlock("\n".join(early)),wr.P(notes["curves"]),
+        wr.H2("归一化配方内比较"),grid(current,"普通＋DN 对渐进＋DN",[panel("六域原始均分 · 同 DN 配方","evaluation/macro6_pct",percent=True),recovery_panel("最差领域恢复率 · 同 DN 配方","recovery/worst_pct",1)]),
+        wr.H2("实际教师切换记录",collapsed_blocks=[wr.P(notes["controller"]),grid(primary,"实际教师强度与训练诊断",diagnostics)]),
+        wr.H2("DN 怎样改变各域反馈",collapsed_blocks=[wr.P(notes["normalization"]),grid(current,"DN 逐领域乘子",dn)]),
+        wr.H2("六领域训练过程",collapsed_blocks=[wr.P(notes["critic"]),grid(primary,"学生到当前教师的差异",domain_training)]),
+        wr.H2("注入起点与回答风格",collapsed_blocks=[wr.P(notes["injection"]),grid(records,"正式评测回答长度与截断率",styles),grid(injected,"注入组单列",[panel("注入组六域均分","evaluation/macro6_pct",percent=True),recovery_panel("注入组最差恢复率 · 保留负值","recovery/worst_pct",1)])]),
+        wr.H2("token 差异分析",collapsed_blocks=[wr.P(notes["kl"])]),
+        wr.H2("评测协议与固定参考",collapsed_blocks=[wr.P("数学/代码：DN-MOPD 8K、关闭思考；其余五项：IM-MOPD avg@3、开启思考。IFBench 为 prompt-loose，IFEval 为 prompt-strict。"),wr.MarkdownBlock("\n".join(references)),wr.P(notes["reference_note"])]),
+        wr.H2("方法起点与实验时间",collapsed_blocks=[wr.P(notes["origin"]),wr.MarkdownBlock("\n".join(progress)),wr.P("训练和评测于 11 月 16 日晚完成；11 月 17 日更新方法说明和同行指标。W&B 的补传时间不作为原始训练时间。")]),
     ]
     archives=[r for r in index["runs"] if r.get("overview",{}).get("scale")=="2B"]
     blocks.append(wr.H2("2B 历史实验 · 不与 1.7B 混比",collapsed_blocks=[wr.P("历史组起点、机器与领域集合不同，三域均分不能与六域均分直接比较。"),grid(archives,"2B 历史对照",[panel("历史三领域均分","evaluation/macro3_pct",percent=True)])]))
-    report=wr.Report(entity=ENTITY,project=PROJECT,title=TITLE,description="最终六领域成绩、平均与最差恢复率、40/100 步对比及机制分析",width="fluid",blocks=blocks)
+    report=wr.Report(entity=ENTITY,project=PROJECT,title=TITLE,description="为什么切换教师、为什么归一化，以及按同行指标怎样呈现早期恢复和短板改善",width="fluid",blocks=blocks)
     return workspace,report
 
 
