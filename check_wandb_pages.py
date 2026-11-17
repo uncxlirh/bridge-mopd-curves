@@ -18,7 +18,7 @@ async def main():
             reject=page.get_by_role('button',name='Reject All',exact=True)
             if await reject.count():await reject.first.click()
             if i==0:
-                assert all(t in body for t in ['领域变化','完整分项成绩','方法','47.04','61.90','18.45'])
+                assert all(t in body for t in ['总览','评测','设置与算法','领域变化','完整分项成绩','学生训练设置','5394','16384','96','47.04','61.90','18.45'])
                 assert await page.locator('strong,b').count()>=10
                 await page.screenshot(path=str(out/'report-top.png'))
                 await page.get_by_text('阶段对比',exact=True).first.scroll_into_view_if_needed()
@@ -29,9 +29,9 @@ async def main():
                 await page.screenshot(path=str(out/'report-charts.png'))
                 await page.get_by_text('领域变化',exact=True).first.scroll_into_view_if_needed()
                 await page.screenshot(path=str(out/'report-domains.png'))
-                print('RENDERED readable report; highest values bold; two compact charts; domain comparison table',flush=True)
+                print('RENDERED MiMo-style sections: pinned student metrics, separate evaluation, full student settings, score highlights',flush=True)
             else:
-                assert '阶段对比' in body and '教师进度' in body
+                assert all(t in body for t in ['阶段对比','学生训练','各领域蒸馏信号','教师进度','DN 各领域乘子'])
                 await page.screenshot(path=str(out/'workspace.png'))
             (out/f'{i}.json').write_text(json.dumps({'url':page.url,'body':body},ensure_ascii=False,indent=2))
         await browser.close()

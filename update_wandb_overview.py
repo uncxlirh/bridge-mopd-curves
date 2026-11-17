@@ -161,36 +161,58 @@ def construct(index, refs=None):
                        layout=wr.Layout(x=i*12,y=0,w=12,h=6)) for i,step in enumerate([40,100])]
     teachers=[panel(title,f"schedule/used_{domain}_lambda",position=i) for i,(title,domain) in enumerate([("医疗教师 λ","med"),("法律教师 λ","law")])]
     for p in teachers:p.layout.h=6
+    core_training=[panel(title,key,position=i) for i,(title,key) in enumerate([
+        ("学生蒸馏 loss", "diagnostics/distillation_abs_loss"),
+        ("学生梯度范数", "diagnostics/gradient_norm"),
+        ("训练回答长度", "diagnostics/response_tokens"),
+        ("训练截断比例 %", "diagnostics/truncated_pct"),
+    ])]
+    domain_signals=[panel(title+" · 学生与当前教师差异", "bridge/abs_k1/"+d,x="train/step",position=i)
+                    for i,(title,d) in enumerate([("数学","math"),("代码","code"),("医学","med"),("法律","law"),("金融","fin"),("IF","if")])]
+    dn_panels=[panel(title+" · DN 乘子", "dn/w/"+d,x="train/step",position=i)
+               for i,(title,d) in enumerate([("数学","math"),("代码","code"),("医学","med"),("法律","law"),("金融","fin"),("IF","if")])]
+    for p in core_training+domain_signals+dn_panels:p.layout.h=6
     workspace=ws.Workspace(entity=ENTITY,project=PROJECT,name="1.7B 渐进式教师主对照",auto_generate_panels=False,
         settings=ws.WorkspaceSettings(x_axis="plot/step",smoothing_type="none",smoothing_weight=0,max_runs=5,ignore_outliers=False),
         runset_settings=ws.RunsetSettings(filters=[Metric("ID").isin([run_id(r) for r in primary])],run_settings=settings(primary),
             pinned_columns=["run:displayName","summary:evaluation/macro6_pct","summary:recovery/mean_pct","summary:recovery/worst_pct"]),
-        sections=[ws.Section(name="阶段对比",is_open=True,panels=stages),
-                  ws.Section(name="教师进度",is_open=False,panels=teachers)])
+        sections=[ws.Section(name="学生训练 · 总览",is_open=True,panels=core_training),
+                  ws.Section(name="阶段对比 · 正式评测",is_open=True,panels=stages),
+                  ws.Section(name="各领域蒸馏信号",is_open=False,panels=domain_signals),
+                  ws.Section(name="教师进度",is_open=False,panels=teachers),
+                  ws.Section(name="DN 各领域乘子",is_open=False,panels=dn_panels)])
     refs_table=["| 参考 | 数学 | 代码 | 医学 | 法律 | 金融 | IF |","|---|---:|---:|---:|---:|---:|---:|"]
     domains=["math","code","medqa","casehold","finqa","instruction_following"]
     for key,title in [("base","起点"),("teacher","教师")]:
         refs_table.append("| "+title+" | "+" | ".join(f"{a['reference'][key][d]:.2f}" for d in domains)+" |")
     blocks=[
-        wr.P("Qwen3-1.7B · 六领域 · 100 步 · 2026 年 11 月 17 日"),
+        wr.P("Bridge-MOPD · Qwen3-1.7B · 2026 年 11 月 17 日"),
+        wr.MarkdownBlock("| 训练状态 | 有效题池 | 每步采样 | 回答上限 |\n|---|---:|---:|---:|\n| 六组均完成 100/100 步 | 5394 题 | 96×4 | 16384 token |"),
         wr.MarkdownBlock(n["metric_reason"]),
-        wr.H1("结果"),wr.MarkdownBlock(ui["summary"]),
-        wr.P("粗体为每列最高值。渐进表示不强切；DN 表示反馈按领域归一化。恢复率单位为 %。"),
+        wr.H1("总览"),wr.P("学生训练：loss 看与当前教师的差异，梯度范数看更新幅度，回答长度和截断率看生成行为。"),
+        grid(primary,"学生训练 · 关键指标",core_training),
+        wr.P("loss 为回答 token 上的平均绝对 log 概率差；梯度范数为裁剪前的值；截断率是回答写满长度上限的比例。"),
+        wr.H1("评测"),wr.MarkdownBlock(ui["summary"]),
+        wr.P("粗体为每列最高值。渐进表示不强切，DN 表示反馈按领域归一化。恢复率单位为 %。"),
         wr.MarkdownBlock(ui["positive"]+"\n\n"+ui["negative"]+"\n\n"+ui["flat"]),
-        wr.H2("阶段对比"),grid(primary,"相同原始起点",stages),
-        wr.H1("领域变化"),wr.P("100 步的普通 MOPD 与渐进＋DN。粗体为两组中较高的成绩。"),wr.MarkdownBlock(ui["pair"]),
-        wr.H1("方法"),wr.P("先用接近起点的教师，再按领域向完整专家推进。教师由固定起点和领域专家逐参数插值得到："),
-        wr.MarkdownBlock("```text\nT_d(λ) = (1−λ)θ₀ + λθ_d\nλ = 0.125、0.25、0.5、0.75、1\n```"),
-        wr.MarkdownBlock(ui["algorithm"]),
-        wr.P("这轮最终数学、代码、金融和 IF 使用完整教师；医疗、法律停在 λ=0.25。旧版第 81 步统一强切，新版取消了这个固定期限。"),
-        wr.P(n["dn_short"]),
+        wr.H2("阶段对比"),grid(primary,"40 步与 100 步 · 正式评测",stages),
+        wr.H2("领域变化"),wr.P("100 步的普通 MOPD 与渐进＋DN。粗体为两组中较高的成绩。"),wr.MarkdownBlock(ui["pair"]),
         wr.H2("完整分项成绩",collapsed_blocks=[wr.MarkdownBlock(ui["raw"]),wr.P("粗体为每个 benchmark 的最高分。")]),
-        wr.H2("算法细节",collapsed_blocks=[wr.MarkdownBlock(n["algorithm_short"]),wr.MarkdownBlock(n["algorithm_calibration"])]),
+        wr.H1("设置与算法"),
+        wr.H2("学生训练设置"),wr.MarkdownBlock(n["student_training"]),
+        wr.H2("六组实验的区别"),wr.MarkdownBlock(n["student_groups"]),
+        wr.H2("批次构成"),wr.P("示例：渐进＋DN 第 100 步，96 题，每题 4 个回答。"),wr.MarkdownBlock(ui.get("batch_composition","")),
+        wr.H2("方法与升档"),wr.P("中间教师由固定起点和领域专家逐参数插值，学生按领域逐步向完整专家学习："),
+        wr.MarkdownBlock("```text\nT_d(λ) = (1−λ)θ₀ + λθ_d\nλ = 0.125、0.25、0.5、0.75、1\n```"),wr.MarkdownBlock(ui["algorithm"]),
+        wr.P("这轮最终数学、代码、金融和 IF 使用完整教师；医疗、法律停在 λ=0.25。旧版第 81 步统一强切，新版取消了这个固定期限。"),
+        wr.H2("损失、升档与归一化"),wr.P(n["student_loss"]),wr.MarkdownBlock(n["student_control"]),
+        wr.H2("运行与恢复"),wr.P(n["student_resume"]),
+        wr.H2("算法定标细节",collapsed_blocks=[wr.MarkdownBlock(n["algorithm_calibration"])]),
         wr.H2("指标与评测口径",collapsed_blocks=[wr.P(n["definitions"]),wr.P("数学/代码：DN-MOPD 8K、关闭思考；其余五项：IM-MOPD avg@3、开启思考。IFBench 为 prompt-loose，IFEval 为 prompt-strict。"),wr.MarkdownBlock("\n".join(refs_table)),wr.P(n["reference_note"])]),
-        wr.MarkdownBlock("训练中的教师进度见[W&B 工作区](https://wandb.ai/chenxheee-sjtu-hpc-center/bridge_mopd?nw=xmjip17v9ke)。")
+        wr.MarkdownBlock("[完整训练指标：按领域与 DN 分组查看](https://wandb.ai/chenxheee-sjtu-hpc-center/bridge_mopd?nw=xmjip17v9ke) · 展示分区参考 [MiMo RL](https://mimo.xiaomi.com/rl/)。")
     ]
     # Use the normal reading width rather than stretching tables and text across the screen.
-    report=wr.Report(entity=ENTITY,project=PROJECT,title=TITLE,description="结果、领域变化与教师算法",width="readable",blocks=blocks)
+    report=wr.Report(entity=ENTITY,project=PROJECT,title=TITLE,description="总览 · 训练指标 · 正式评测 · 学生设置与算法",width="readable",blocks=blocks)
     return workspace,report
 
 
@@ -222,7 +244,7 @@ def main():
     print("DASHBOARD REPORT",refs["report"],flush=True)
     # Reload native saved objects to verify that filters and chart definitions survived saving.
     loaded=ws.Workspace.from_url(workspace.url)
-    assert len(loaded.sections)==2
+    assert len(loaded.sections)==5
     loaded_report=wr.Report.from_url(report.url)
     assert loaded_report.title==TITLE
     print("VERIFIED NATIVE W&B OVERVIEW",flush=True)
