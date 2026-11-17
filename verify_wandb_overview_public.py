@@ -36,10 +36,13 @@ def walk(value):
         for child in value:
             walk(child)
 walk(spec)
-assert len(panels)==4, "Four student training metrics should be pinned in overview"
+assert len(panels)==16, "Four core, two lambda, six DN, two med/law signals and two controller plots"
 assert len(bars)==2
 assert all(not m.startswith("summary_metrics.") for p in bars for m in p["metrics"])
 assert {m for p in bars for m in p["metrics"]} == {"checkpoint/40/gain/evaluation/macro6_pct", "checkpoint/100/gain/evaluation/macro6_pct"}
+all_line_metrics={m for p in panels for m in p["metrics"]}
+assert {"trajectory/dn_"+d+"_weight" for d in ["math","code","med","law","fin","if"]} <= all_line_metrics
+assert {"schedule/used_med_lambda","schedule/used_law_lambda","controller/threshold","controller/med_next_ema","controller/law_next_ema"} <= all_line_metrics
 serialized=json.dumps(spec,ensure_ascii=False)
 assert all(t in serialized for t in ["领域变化","完整分项成绩","学生训练设置","5394","16384","**47.04**","**61.90**","**57.89**","**67.60**"])
 required = {"evaluation/"+k+"_pct" for k in ["math", "code", "medqa", "casehold", "finqa", "instruction_following"]}

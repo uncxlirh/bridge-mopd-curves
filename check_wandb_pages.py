@@ -18,7 +18,7 @@ async def main():
             reject=page.get_by_role('button',name='Reject All',exact=True)
             if await reject.count():await reject.first.click()
             if i==0:
-                assert all(t in body for t in ['总览','评测','设置与算法','领域变化','完整分项成绩','学生训练设置','5394','16384','96','47.04','61.90','18.45'])
+                assert all(t in body for t in ['总览','评测','设置与算法','领域变化','完整分项成绩','学生训练设置','5394','16384','96','47.04','61.90','18.45','恢复率怎么算','DN：六领域反馈权重','λ：实际使用的教师档位'])
                 assert await page.locator('strong,b').count()>=10
                 await page.screenshot(path=str(out/'report-top.png'))
                 await page.get_by_text('阶段对比',exact=True).first.scroll_into_view_if_needed()
@@ -27,6 +27,16 @@ async def main():
                 body=await page.locator('body').inner_text()
                 assert 'Select runs that logged' not in body and 'No data available' not in body
                 await page.screenshot(path=str(out/'report-charts.png'))
+                await page.get_by_text('λ：实际使用的教师档位',exact=True).first.scroll_into_view_if_needed()
+                await page.wait_for_timeout(6000)
+                curve_body=await page.locator('body').inner_text()
+                assert 'Select runs that logged' not in curve_body and 'No data available' not in curve_body
+                await page.screenshot(path=str(out/'report-lambda.png'))
+                await page.get_by_text('DN：六领域反馈权重',exact=True).first.scroll_into_view_if_needed()
+                await page.wait_for_timeout(6000)
+                curve_body=await page.locator('body').inner_text()
+                assert 'Select runs that logged' not in curve_body and 'No data available' not in curve_body
+                await page.screenshot(path=str(out/'report-dn.png'))
                 await page.get_by_text('领域变化',exact=True).first.scroll_into_view_if_needed()
                 await page.screenshot(path=str(out/'report-domains.png'))
                 print('RENDERED MiMo-style sections: pinned student metrics, separate evaluation, full student settings, score highlights',flush=True)

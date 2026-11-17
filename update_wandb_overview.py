@@ -105,8 +105,8 @@ def refresh_aliases(api, records):
         # History is authoritative: summary can be reshaped by another importer.
         previous, raw_previous = {}, {}
         for item in public.scan_history(page_size=1000):
-            for axis, target, prefixes in [("plot/step", previous, ("training/", "evaluation/", "diagnostics/", "schedule/", "performance/", "recovery/", "comparison/", "evaluation_detail/")),
-                                            ("train/step", raw_previous, ("eval/",))]:
+            for axis, target, prefixes in [("plot/step", previous, ("training/", "evaluation/", "diagnostics/", "schedule/", "performance/", "recovery/", "comparison/", "evaluation_detail/", "controller/", "trajectory/")),
+                                            ("train/step", raw_previous, ("eval/", "dn/w/", "bridge/", "actor/", "response_length/", "response/"))]:
                 value = item.get(axis)
                 if not isinstance(value, (int, float)) or not math.isfinite(value):
                     continue
@@ -123,10 +123,10 @@ def refresh_aliases(api, records):
         # changed cells; do not replay the original training history.
         raw_rows = {}
         for key, points in content["metrics"].items():
-            if key.startswith("eval/"):
+            if key.startswith(("eval/", "dn/w/", "bridge/", "actor/", "response_length/", "response/")):
                 for step, value in points:
                     raw_rows.setdefault(str(step), {})[key] = value
-        raw_changes = {int(step): {k:v for k,v in values.items() if raw_previous.get(step, {}).get(k) != v}
+        raw_changes = {int(step): {k:v for k,v in values.items() if not (isinstance(raw_previous.get(step, {}).get(k),(int,float)) and math.isclose(raw_previous[step][k],v,rel_tol=1e-7,abs_tol=1e-9))}
                        for step,values in raw_rows.items()}
         raw_changes = {s:v for s,v in raw_changes.items() if v}
         if changes or raw_changes:
@@ -134,7 +134,7 @@ def refresh_aliases(api, records):
                              settings=wandb.Settings(disable_git=True, disable_code=True, x_disable_meta=True,
                                                      x_disable_stats=True, console="off"))
             run.define_metric("plot/step")
-            for prefix in ["training/*", "evaluation/*", "diagnostics/*", "schedule/*", "performance/*", "recovery/*", "comparison/*", "evaluation_detail/*"]:
+            for prefix in ["training/*", "evaluation/*", "diagnostics/*", "schedule/*", "performance/*", "recovery/*", "comparison/*", "evaluation_detail/*", "controller/*", "trajectory/*"]:
                 run.define_metric(prefix, step_metric="plot/step", step_sync=False)
             for step, values in sorted(raw_changes.items()):
                 run.log({"train/step": step, **values})
@@ -160,27 +160,47 @@ def construct(index, refs=None):
                        aggregate=False,max_runs_to_show=5,max_bars_to_show=5,font_size="medium",
                        layout=wr.Layout(x=i*12,y=0,w=12,h=6)) for i,step in enumerate([40,100])]
     teachers=[panel(title,f"schedule/used_{domain}_lambda",position=i) for i,(title,domain) in enumerate([("医疗教师 λ","med"),("法律教师 λ","law")])]
-    for p in teachers:p.layout.h=6
+    for p in teachers:
+        p.layout.h=6
+        p.range_y=(0,1)
     core_training=[panel(title,key,position=i) for i,(title,key) in enumerate([
-        ("学生蒸馏 loss", "diagnostics/distillation_abs_loss"),
-        ("学生梯度范数", "diagnostics/gradient_norm"),
-        ("训练回答长度", "diagnostics/response_tokens"),
-        ("训练截断比例 %", "diagnostics/truncated_pct"),
+        ("学生蒸馏 loss", "trajectory/distillation_abs_loss"),
+        ("学生梯度范数", "trajectory/gradient_norm"),
+        ("训练回答长度", "trajectory/response_tokens"),
+        ("训练截断比例 %", "trajectory/truncated_pct"),
     ])]
-    domain_signals=[panel(title+" · 学生与当前教师差异", "bridge/abs_k1/"+d,x="train/step",position=i)
+    domain_signals=[panel(title+" · 学生与当前教师差异", "trajectory/"+d+"_abs_k1",x="plot/step",position=i)
                     for i,(title,d) in enumerate([("数学","math"),("代码","code"),("医学","med"),("法律","law"),("金融","fin"),("IF","if")])]
-    dn_panels=[panel(title+" · DN 乘子", "dn/w/"+d,x="train/step",position=i)
+    dn_panels=[panel(title+" · DN 乘子", "trajectory/dn_"+d+"_weight",x="plot/step",position=i)
                for i,(title,d) in enumerate([("数学","math"),("代码","code"),("医学","med"),("法律","law"),("金融","fin"),("IF","if")])]
     for p in core_training+domain_signals+dn_panels:p.layout.h=6
+    for p in dn_panels:
+        p.range_y=(0,4)
+        p.title_y="缩放倍数"
+    gradual=[r for r in primary if r["overview"]["method"]=="progressive"]
+    normalized=[r for r in primary if r["overview"]["normalized"]]
+    focus_id=next(r["data_id"] for r in a["records"] if r["key"]=="q17_best_dn100")
+    focus=[r for r in records if r["id"]==focus_id]
+    relevant_signals=[domain_signals[2],domain_signals[3]]
+    for i,p in enumerate(relevant_signals):p.layout.x=i*12;p.layout.y=0
+    controller_panels=[]
+    for i,(title,d) in enumerate([("医疗","med"),("法律","law")]):
+        p=panel(title+" · 下一档 EMA 与阈值",f"controller/{d}_next_ema",position=i)
+        p.y.append("controller/threshold")
+        p.layout.h=6
+        p.line_marks={"controller/threshold":"dashed",f"controller/{d}_next_ema":"solid"}
+        p.line_titles={"controller/threshold":"升档阈值 δ",f"controller/{d}_next_ema":"下一档差距 EMA"}
+        controller_panels.append(p)
+
     workspace=ws.Workspace(entity=ENTITY,project=PROJECT,name="1.7B 渐进式教师主对照",auto_generate_panels=False,
         settings=ws.WorkspaceSettings(x_axis="plot/step",smoothing_type="none",smoothing_weight=0,max_runs=5,ignore_outliers=False),
         runset_settings=ws.RunsetSettings(filters=[Metric("ID").isin([run_id(r) for r in primary])],run_settings=settings(primary),
             pinned_columns=["run:displayName","summary:evaluation/macro6_pct","summary:recovery/mean_pct","summary:recovery/worst_pct"]),
         sections=[ws.Section(name="学生训练 · 总览",is_open=True,panels=core_training),
                   ws.Section(name="阶段对比 · 正式评测",is_open=True,panels=stages),
-                  ws.Section(name="各领域蒸馏信号",is_open=False,panels=domain_signals),
-                  ws.Section(name="教师进度",is_open=False,panels=teachers),
-                  ws.Section(name="DN 各领域乘子",is_open=False,panels=dn_panels)])
+                  ws.Section(name="教师进度",is_open=True,panels=teachers),
+                  ws.Section(name="DN 各领域乘子",is_open=True,panels=dn_panels),
+                  ws.Section(name="各领域蒸馏信号",is_open=False,panels=domain_signals)])
     refs_table=["| 参考 | 数学 | 代码 | 医学 | 法律 | 金融 | IF |","|---|---:|---:|---:|---:|---:|---:|"]
     domains=["math","code","medqa","casehold","finqa","instruction_following"]
     for key,title in [("base","起点"),("teacher","教师")]:
@@ -192,7 +212,12 @@ def construct(index, refs=None):
         wr.H1("总览"),wr.P("学生训练：loss 看与当前教师的差异，梯度范数看更新幅度，回答长度和截断率看生成行为。"),
         grid(primary,"学生训练 · 关键指标",core_training),
         wr.P("loss 为回答 token 上的平均绝对 log 概率差；梯度范数为裁剪前的值；截断率是回答写满长度上限的比例。"),
-        wr.H1("评测"),wr.MarkdownBlock(ui["summary"]),
+        wr.H1("教师推进与领域平衡"),
+        wr.H2("λ：实际使用的教师档位"),wr.P(n["lambda_reading"]),grid(gradual,"三组渐进教师 · 医疗与法律",teachers),
+        wr.H2("DN：六领域反馈权重"),wr.P(n["dn_reading"]),grid(normalized,"普通＋DN 与渐进＋DN",dn_panels),
+        wr.H2("换档怎样改变蒸馏信号"),wr.P("这里只看实际使用中间教师的医疗、法律；曲线是学生与当前教师在回答 token 上的平均绝对 log 概率差。"),grid(primary,"医疗与法律 · 当前教师差异",relevant_signals),
+        wr.H2("升档判断：EMA 与阈值",collapsed_blocks=[wr.P(n["controller_reading"]),grid(focus,"渐进＋DN · 控制器",controller_panels)]),
+        wr.H1("评测"),wr.H2("恢复率怎么算"),wr.MarkdownBlock(n["recovery_explanation"]),wr.MarkdownBlock(ui["summary"]),
         wr.P("粗体为每列最高值。渐进表示不强切，DN 表示反馈按领域归一化。恢复率单位为 %。"),
         wr.MarkdownBlock(ui["positive"]+"\n\n"+ui["negative"]+"\n\n"+ui["flat"]),
         wr.H2("阶段对比"),grid(primary,"40 步与 100 步 · 正式评测",stages),
