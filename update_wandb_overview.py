@@ -187,7 +187,7 @@ def construct(index, refs=None):
         refs_table.append("| "+title+" | "+" | ".join(f"{a['reference'][key][d]:.2f}" for d in domains)+" |")
     blocks=[
         wr.P("Bridge-MOPD · Qwen3-1.7B · 2026 年 11 月 17 日"),
-        wr.MarkdownBlock("| 训练状态 | 有效题池 | 每步采样 | 回答上限 |\n|---|---:|---:|---:|\n| 六组均完成 100/100 步 | 5394 题 | 96×4 | 16384 token |"),
+        wr.MarkdownBlock(ui["status"]),
         wr.MarkdownBlock(n["metric_reason"]),
         wr.H1("总览"),wr.P("学生训练：loss 看与当前教师的差异，梯度范数看更新幅度，回答长度和截断率看生成行为。"),
         grid(primary,"学生训练 · 关键指标",core_training),
