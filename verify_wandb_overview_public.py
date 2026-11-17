@@ -23,9 +23,11 @@ data = query("""query($entity:String!, $project:String!) {
 report = next(x["node"] for x in data["project"]["allViews"]["edges"]
               if x["node"]["displayName"] == "渐进式教师实验总览")
 spec = json.loads(report["spec"])
-panels = []
+panels, bars = [], []
 def walk(value):
     if isinstance(value, dict):
+        if value.get("viewType") == "Bar Chart":
+            bars.append(value["config"])
         if value.get("viewType") == "Run History Line Plot":
             panels.append(value["config"])
         for child in value.values():
@@ -35,16 +37,24 @@ def walk(value):
             walk(child)
 walk(spec)
 assert panels and all(p["xAxis"] in {"plot/step", "train/step"} for p in panels)
-evaluations = [p for p in panels if any(y.startswith(("evaluation/", "recovery/", "comparison/", "evaluation_detail/")) for y in p["metrics"])]
-assert evaluations and all(p.get("smoothingWeight", 0) == 0 for p in evaluations)
+assert bars
+assert not any(any(m.startswith(("recovery/", "comparison/", "evaluation_detail/")) or (m.startswith("evaluation/") and m != "evaluation/macro3_pct") for m in p["metrics"]) for p in panels)
+bar_metrics = {m.removeprefix("summary_metrics.") for p in bars for m in p["metrics"]}
 required = {"evaluation/"+k+"_pct" for k in ["math", "code", "medqa", "casehold", "finqa", "instruction_following"]}
-assert required <= {m for p in panels for m in p["metrics"]}
+assert {"checkpoint/100/gain/"+m for m in required} <= bar_metrics
+assert {"checkpoint/40/gain/"+m for m in required} <= bar_metrics
 assert {"bridge/abs_k1/"+d for d in ["math","code","med","law","fin","if"]} <= {m for p in panels for m in p["metrics"]}
 assert "六领域正式评测结果" in json.dumps(spec, ensure_ascii=False)
-assert {"recovery/mean_pct", "recovery/worst_pct", "comparison/macro6_gain_pp"} <= {m for p in panels for m in p["metrics"]}
-for p in panels:
-    if any(m.startswith("recovery/") for m in p["metrics"]):
-        assert p.get("rangeY", [None,None]) in ([None,None], None), p.get("rangeY")
+summary_query = """query($entity:String!, $project:String!, $run:String!) {
+ project(name:$project, entityName:$entity) { run(name:$run) { summaryMetrics } }
+}"""
+values=query(summary_query,{**VARIABLES,"run":"bf3adff1d85d08f6"})["project"]["run"]["summaryMetrics"]
+if isinstance(values,str): values=json.loads(values)
+for key,expected in [("checkpoint/100/gain/evaluation/casehold_pct",1.311),
+                     ("checkpoint/100/gain/evaluation/instruction_following_pct",-1.239372),
+                     ("checkpoint/100/matched_gain/evaluation/casehold_pct",2.371093)]:
+    assert abs(values[key]-expected)<.0001, (key,values.get(key))
+print("ANONYMOUS CHECKPOINT BARS",len(bars),"panels; actual gains include positive and negative values",flush=True)
 history_query = """query($entity:String!, $project:String!, $run:String!, $specs:[JSONString!]!) {
  project(name:$project, entityName:$entity) { run(name:$run) { sampledHistory(specs:$specs) } }
 }"""

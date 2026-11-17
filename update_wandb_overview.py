@@ -63,11 +63,33 @@ def grid(records, title, panels):
     return wr.PanelGrid(runsets=[runset(records, title)], panels=panels)
 
 
+def checkpoint_snapshots(analysis):
+    baseline = next(r for r in analysis["records"] if r["key"] == "q17_vanilla100")
+    dn_baseline = next(r for r in analysis["records"] if r["key"] == "q17_vanilla_dn100")
+    result = {}
+    for record in analysis["records"]:
+        values = {}
+        for step, row in record["checkpoints"].items():
+            for metric, value in row.items():
+                if metric.startswith(("evaluation/", "recovery/", "evaluation_detail/")):
+                    values[f"checkpoint/{step}/{metric}"] = value
+            ref = baseline["checkpoints"][step]
+            matched = dn_baseline["checkpoints"][step] if record["key"] in {"q17_best_dn100", "q17_vanilla_dn100"} else ref
+            for metric in ["evaluation/"+d+"_pct" for d in ["math","code","medqa","casehold","finqa","instruction_following","macro6"]] + ["recovery/mean_pct","recovery/worst_pct"]:
+                values[f"checkpoint/{step}/gain/{metric}"] = round(row[metric]-ref[metric],6)
+                values[f"checkpoint/{step}/matched_gain/{metric}"] = round(row[metric]-matched[metric],6)
+        result[record["data_id"]] = values
+    return result
+
+
 def refresh_aliases(api, records):
+    analysis = json.loads(Path("data/analysis.json").read_text())
+    snapshots = checkpoint_snapshots(analysis)
+    labels = {r["data_id"]:r["label"] for r in analysis["records"]}
     for record in records:
         path = f"{ENTITY}/{PROJECT}/{run_id(record)}"
         public = api.run(path)
-        public.name = record.get("display_name", record["name"])
+        public.name = labels.get(record["id"], record.get("display_name", record["name"]))
         public.config.update(record.get("overview", {}))
         public.config["original_run_label"] = record["name"]
         public.config["primary_training_metric"] = "bridge/abs_k1/<domain>"
@@ -120,6 +142,9 @@ def refresh_aliases(api, records):
                 run.log({"plot/step": step, **values})
             run.summary["train/step"] = int(run.summary.get("raw_import_last_source_step", record["lastStep"]))
             run.finish()
+        if record["id"] in snapshots:
+            public = api.run(path)
+            public.summary.update(snapshots[record["id"]])
         print("OVERVIEW METRICS", record.get("display_name"), "changed steps", len(changes), flush=True)
 
 
@@ -136,21 +161,28 @@ def construct(index, refs=None):
     domains = [("数学", "math"), ("代码", "code"), ("医学", "medqa"),
                ("法律", "casehold"), ("金融", "finqa"), ("指令遵循", "instruction_following")]
     train_domains = [("数学","math"),("代码","code"),("医学","med"),("法律","law"),("金融","fin"),("指令遵循","if")]
-    def recovery_panel(title, key, position=0):
-        p = panel(title, key, position=position)
-        p.title_y = "恢复率 %（允许负值及超过 100）"
-        return p
-    overall = [panel("原始六领域均分 · 保留原定终点指标", "evaluation/macro6_pct", percent=True),
-               recovery_panel("平均领域恢复率 · 六域等权", "recovery/mean_pct", 1),
-               recovery_panel("最差领域恢复率 · 看短板", "recovery/worst_pct", 2),
-               panel("相对同检查点普通 MOPD 的六域均分增益 · 分", "comparison/macro6_gain_pp", position=3)]
-    breakdown = [panel(title+"正式评测 · %", "evaluation/"+key+"_pct", percent=True, position=i)
-                 for i,(title,key) in enumerate(domains)]
-    recoveries = [recovery_panel(title+"恢复率 · 固定起点/教师参考", "recovery/"+key+"_pct", i)
+    def snapshot_bar(title, key, position=0, step=100, bounds=(None,None), unit="百分点"):
+        return wr.BarPlot(title=title,metrics=[wr.SummaryMetric(f"checkpoint/{step}/{key}")],
+                          orientation="h",range_x=bounds,title_x=unit,
+                          aggregate=False,max_runs_to_show=8,max_bars_to_show=8,font_size="medium",
+                          layout=wr.Layout(x=(position%2)*12,y=(position//2)*8,w=12,h=8))
+    overall = [snapshot_bar("100 步 · 六域均分增益", "gain/evaluation/macro6_pct"),
+               snapshot_bar("100 步 · 平均恢复率增益", "gain/recovery/mean_pct",1),
+               snapshot_bar("100 步 · 最差领域恢复率增益", "gain/recovery/worst_pct",2),
+               snapshot_bar("40 步 · 六域均分增益", "gain/evaluation/macro6_pct",3,step=40)]
+    def domain_gains(step):
+        baseline = next(r for r in analysis["records"] if r["key"]=="q17_vanilla100")["checkpoints"][str(step)]
+        rows = [r["checkpoints"][str(step)] for r in analysis["records"] if r["key"]!="q17_adaptnc_inj100"]
+        maximum = max(abs(row["evaluation/"+key+"_pct"]-baseline["evaluation/"+key+"_pct"]) for row in rows for title,key in domains)
+        limit = math.ceil(maximum*1.15*2)/2
+        return [snapshot_bar(f"{title} · {step} 步相对普通 MOPD", "gain/evaluation/"+key+"_pct",i,step=step,bounds=(-limit,limit)) for i,(title,key) in enumerate(domains)]
+    breakdown = domain_gains(100)
+    early_breakdown = domain_gains(40)
+    recoveries = [snapshot_bar(title+" · 100 步恢复率", "recovery/"+key+"_pct",i,unit="恢复率 %")
                   for i,(title,key) in enumerate(domains)]
     domain_training = [panel(title+"训练 · 与当前教师的差异（不是正确率）", "bridge/abs_k1/"+key,
                              x="train/step", smooth=True, position=i) for i,(title,key) in enumerate(train_domains)]
-    diagnostics = [panel(title,key,x=x,position=i) for i,(title,key,x) in enumerate([
+    diagnostics = [(snapshot_bar(title,key,position=i,unit="%") if key.startswith("evaluation/") else panel(title,key,x=x,position=i)) for i,(title,key,x) in enumerate([
         ("数学训练题正确率 · 仅数学训练题", "training/math_accuracy_pct", "plot/step"),
         ("医疗 · 本步实际使用的教师 λ", "schedule/used_med_lambda", "plot/step"),
         ("法律 · 本步实际使用的教师 λ", "schedule/used_law_lambda", "plot/step"),
@@ -164,9 +196,9 @@ def construct(index, refs=None):
     ])]
     dn = [panel(title+" · DN 实际乘子", "dn/w/"+key, x="train/step", position=i)
           for i,(title,key) in enumerate(train_domains)]
-    styles = [panel(title+" · 正式评测平均回答长度", "evaluation_detail/"+key+"_response_tokens",position=i)
+    styles = [snapshot_bar(title+" · 100 步评测平均回答长度", "evaluation_detail/"+key+"_response_tokens",position=i,unit="token")
               for i,(title,key) in enumerate([("医学","medqa"),("法律","casehold"),("金融","finqa"),("IFBench","ifbench"),("IFEval","ifeval")])]
-    styles.append(panel("IFEval · 正式评测截断率 %", "evaluation_detail/ifeval_truncated_pct",position=5))
+    styles.append(snapshot_bar("IFEval · 100 步评测截断率", "evaluation_detail/ifeval_truncated_pct",position=5,unit="%"))
     guide = notes["conclusion"]
     workspace = ws.Workspace(entity=ENTITY,project=PROJECT,name="1.7B 渐进式教师主对照",
         auto_generate_panels=False,
@@ -174,9 +206,10 @@ def construct(index, refs=None):
         runset_settings=ws.RunsetSettings(filters=[Metric("ID").isin([run_id(r) for r in primary])],run_settings=settings(primary),
             pinned_columns=["run:displayName","config:recorded_step.value","summary:evaluation/checkpoint_step", "summary:evaluation/macro6_pct", "summary:recovery/mean_pct", "summary:recovery/worst_pct"]),
         sections=[
-            ws.Section(name="整体结果与同检查点增益",is_open=True,panels=overall),
-            ws.Section(name="六领域正式评测 · 原始分",is_open=True,panels=breakdown),
-            ws.Section(name="六领域恢复率 · 固定参考且不裁剪",is_open=True,panels=recoveries),
+            ws.Section(name="独立检查点 · 相对普通 MOPD 的增益",is_open=True,panels=overall),
+            ws.Section(name="六领域正式评测 · 100 步增减（百分点）",is_open=True,panels=breakdown),
+            ws.Section(name="六领域正式评测 · 40 步增减（百分点）",is_open=False,panels=early_breakdown),
+            ws.Section(name="六领域恢复率 · 100 步独立比较",is_open=False,panels=recoveries),
             ws.Section(name="六领域训练 · 与当前教师的差异",is_open=False,panels=domain_training),
             ws.Section(name="教师推进与训练诊断",is_open=False,panels=diagnostics),
             ws.Section(name="DN 按领域乘子",is_open=False,panels=dn),
@@ -216,17 +249,20 @@ def construct(index, refs=None):
         wr.H1("我们的贡献和结果"),wr.P(guide),wr.P(notes["contributions"]),wr.MarkdownBlock(notes["claims_table"]),
         wr.MarkdownBlock("\n".join(summary)),
         wr.H1("先看哪些指标"),wr.P(notes["metric_guide"]),wr.P(notes["definitions"]),
-        grid(primary,"相同原始起点 · 主对照",overall),
+        wr.P("以下柱状图每根柱只对应标明的检查点；增益统一减去同检查点的普通 MOPD（无 DN）。零是基线，正值为改善，负值为退步。"),
+        grid(primary,"独立检查点 · 主对照",overall),
         wr.H1("六领域正式评测结果"),wr.MarkdownBlock("\n".join(raw)),
         wr.P("收益主要在医疗、法律；IF 和金融的变化也一并列出。七个 benchmark 对应六领域，IF 两项先平均。"),
-        grid(primary,"六领域正式评测",breakdown),
-        wr.H1("恢复率和最差领域"),wr.P("恢复率把原始学生放在 0%、各域教师放在 100%。看六张分项图，可以分清平均恢复提高来自哪些领域。"),grid(primary,"六域恢复率",recoveries),
+        wr.P("这六张图只比较第 100 步，各域使用相同的对称横轴范围。原始分数见上表；不再用 40、100 两个点连出学习曲线。"),
+        grid(primary,"100 步 · 相对普通 MOPD 的各域增减",breakdown),
+        wr.H1("恢复率和最差领域"),wr.P("以下是第 100 步的独立恢复率比较。起点为 0%，教师参考为 100%；不将两个检查点连线。"),grid(primary,"六域恢复率",recoveries),
         wr.H1("第 40 步已经学到了多少"),wr.MarkdownBlock("\n".join(early)),wr.P(notes["curves"]),
-        wr.H2("归一化配方内比较"),grid(current,"普通＋DN 对渐进＋DN",[panel("六域原始均分 · 同 DN 配方","evaluation/macro6_pct",percent=True),recovery_panel("最差领域恢复率 · 同 DN 配方","recovery/worst_pct",1)]),
+        wr.H2("40 步各领域增减",collapsed_blocks=[grid(primary,"40 步 · 相对普通 MOPD 的各域增减",early_breakdown)]),
+        wr.H2("归一化配方内比较"),grid(current,"普通＋DN 对渐进＋DN",[snapshot_bar("100 步 · 同 DN 配方均分增益","matched_gain/evaluation/macro6_pct"),snapshot_bar("100 步 · 同 DN 配方最差恢复率增益","matched_gain/recovery/worst_pct",1)]),
         wr.H2("实际教师切换记录",collapsed_blocks=[wr.P(notes["controller"]),grid(primary,"实际教师强度与训练诊断",diagnostics)]),
         wr.H2("DN 怎样改变各域反馈",collapsed_blocks=[wr.P(notes["normalization"]),grid(current,"DN 逐领域乘子",dn)]),
         wr.H2("六领域训练过程",collapsed_blocks=[wr.P(notes["critic"]),grid(primary,"学生到当前教师的差异",domain_training)]),
-        wr.H2("注入起点与回答风格",collapsed_blocks=[wr.P(notes["injection"]),grid(records,"正式评测回答长度与截断率",styles),grid(injected,"注入组单列",[panel("注入组六域均分","evaluation/macro6_pct",percent=True),recovery_panel("注入组最差恢复率 · 保留负值","recovery/worst_pct",1)])]),
+        wr.H2("注入起点与回答风格",collapsed_blocks=[wr.P(notes["injection"]),grid(records,"正式评测回答长度与截断率",styles),grid(injected,"注入组单列",[snapshot_bar("注入组 · 100 步原始六域均分","evaluation/macro6_pct",unit="%"),snapshot_bar("注入组 · 100 步最差恢复率","recovery/worst_pct",1,unit="恢复率 %")])]),
         wr.H2("token 差异分析",collapsed_blocks=[wr.P(notes["kl"])]),
         wr.H2("评测协议与固定参考",collapsed_blocks=[wr.P("数学/代码：DN-MOPD 8K、关闭思考；其余五项：IM-MOPD avg@3、开启思考。IFBench 为 prompt-loose，IFEval 为 prompt-strict。"),wr.MarkdownBlock("\n".join(references)),wr.P(notes["reference_note"])]),
         wr.H2("方法起点与实验时间",collapsed_blocks=[wr.P(notes["origin"]),wr.MarkdownBlock("\n".join(progress)),wr.P("训练和评测于 11 月 16 日晚完成；11 月 17 日更新方法说明和同行指标。W&B 的补传时间不作为原始训练时间。")]),
@@ -265,7 +301,7 @@ def main():
     print("DASHBOARD REPORT",refs["report"],flush=True)
     # Reload native saved objects to verify that filters and chart definitions survived saving.
     loaded=ws.Workspace.from_url(workspace.url)
-    assert len(loaded.sections)==6
+    assert len(loaded.sections)==7
     loaded_report=wr.Report.from_url(report.url)
     assert loaded_report.title==TITLE
     print("VERIFIED NATIVE W&B OVERVIEW",flush=True)
