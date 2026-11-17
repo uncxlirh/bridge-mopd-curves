@@ -23,7 +23,7 @@ async def main():
                     assert 'Page not found' not in body and 'We couldn’t find this page' not in body, url
                     assert '六领域正式评测' in body, url
                     if '/reports/' in path:
-                        assert all(t in body for t in ['为什么看这些指标','正向结果','负向结果','基本持平的结果','为什么做教师切换和归一化']), url
+                        assert all(t in body for t in ['为什么看这些指标','正向结果','负向结果','渐进教师怎么算']), url
                         assert '47.04' in body and '61.90' in body and '18.45' in body, url
                         assert '94/100' not in body and '等待完整评测' not in body, url
                     else:
@@ -45,6 +45,9 @@ async def main():
                             await page.screenshot(path=str(dest/f'{i}-section-{j}.png'),full_page=False)
                             section_text=await page.locator('body').inner_text()
                             assert 'Page not found' not in section_text
+                            assert 'Select runs that logged' not in section_text, section_text[-5000:]
+                            assert 'No data available' not in section_text, section_text[-5000:]
+                            print('CHART SECTION BODY',section_text[-6500:],flush=True)
                             print('RENDERED REPORT SECTION',title,flush=True)
 
                 except Exception as e:

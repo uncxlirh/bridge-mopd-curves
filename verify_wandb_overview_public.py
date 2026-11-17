@@ -38,6 +38,7 @@ def walk(value):
 walk(spec)
 assert panels and all(p["xAxis"] in {"plot/step", "train/step"} for p in panels)
 assert bars
+assert all(not m.startswith("summary_metrics.") for p in bars for m in p["metrics"]), "Bar Chart requires literal summary keys, not summary_metrics prefix"
 assert not any(any(m.startswith(("recovery/", "comparison/", "evaluation_detail/")) or (m.startswith("evaluation/") and m != "evaluation/macro3_pct") for m in p["metrics"]) for p in panels)
 bar_metrics = {m.removeprefix("summary_metrics.") for p in bars for m in p["metrics"]}
 required = {"evaluation/"+k+"_pct" for k in ["math", "code", "medqa", "casehold", "finqa", "instruction_following"]}
