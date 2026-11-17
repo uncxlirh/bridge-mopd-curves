@@ -1,0 +1,926 @@
+{
+  "updated": "2026-11-17 14:42 北京时间",
+  "reference": {
+    "version": "q17_h800_status_20261114_v1",
+    "definition": "100*(student-base)/(teacher-base) per domain; IF scores averaged before normalization; unweighted mean and minimum over six domains; no clipping",
+    "base": {
+      "math": 8.67,
+      "code": 13.71,
+      "medqa": 53.52186436239854,
+      "casehold": 60.720110400200724,
+      "finqa": 60.418482999128166,
+      "ifbench": 26.777777777777782,
+      "ifeval": 70.91805298829328,
+      "instruction_following": 48.847915383035534
+    },
+    "teacher": {
+      "math": 20.52,
+      "code": 22.14,
+      "medqa": 59.88478659334904,
+      "casehold": 71.0199473089951,
+      "finqa": 67.30601569311246,
+      "ifbench": 43.55555555555555,
+      "ifeval": 78.37338262476895,
+      "instruction_following": 60.964469090162254
+    },
+    "sources": {
+      "math_code": "Recorded B200 endpoints copied in reports/q17_20261112/STATUS_H800.md; rounded to 0.01 points",
+      "medqa_base": "H800 reports/q17_20261112/eval_theta0/metrics.json",
+      "casehold_base": "origin/b200:reports/q17_20261112/eval_theta0_mlif/metrics.json",
+      "finqa_base_teacher": "origin/b200:reports/q17_20261112/eval_{theta0,teacher}_fin/metrics.json",
+      "medqa_casehold_teacher": "origin/b200:reports/q17_20261112/eval_teacher_{med,law}/metrics.json",
+      "if_base_teacher": "H800 reports/q17_20261112/eval_{theta0,teacher}_if/metrics.json",
+      "b200_revision": "c8a8a41b20c5c1235fe0d9004d25ef77c2f7b743"
+    },
+    "limitations": [
+      "Fixed endpoints reproduce the existing H800 status table; they combine H800 and B200 evaluation samples.",
+      "H800 repeat teacher evaluations differ (MedQA 60.27756, CaseHOLD 70.86940); normalized numbers depend on endpoint choice.",
+      "Teacher composite is a domain-routed reference, not a proven upper bound.",
+      "Recovery is an additional descriptive metric; original raw macro6 endpoint is retained."
+    ]
+  },
+  "records": [
+    {
+      "key": "q17_vanilla100",
+      "label": "普通 MOPD",
+      "last_step": 100,
+      "checkpoints": {
+        "40": {
+          "evaluation/math_pct": 17.940001,
+          "evaluation/code_pct": 18.59,
+          "evaluation/medqa_pct": 53.809898,
+          "evaluation/casehold_pct": 58.449379,
+          "evaluation/finqa_pct": 62.97588,
+          "evaluation/ifbench_pct": 30.333334,
+          "evaluation/ifeval_pct": 75.723969,
+          "evaluation/instruction_following_pct": 53.028651,
+          "evaluation/macro6_pct": 44.132302,
+          "evaluation/checkpoint_step": 40.0,
+          "recovery/math_pct": 78.227857,
+          "recovery/code_pct": 57.888493,
+          "recovery/medqa_pct": 4.526751,
+          "recovery/casehold_pct": -22.046285,
+          "recovery/finqa_pct": 37.130815,
+          "recovery/instruction_following_pct": 34.504334,
+          "recovery/mean_pct": 31.705327,
+          "recovery/worst_pct": -22.046285,
+          "recovery/composite_gap_closed_pct": 33.791782,
+          "evaluation_detail/medqa_response_tokens": 4936.347473,
+          "evaluation_detail/medqa_truncated_pct": 0.0,
+          "evaluation_detail/casehold_response_tokens": 5178.653243,
+          "evaluation_detail/casehold_truncated_pct": 0.351273,
+          "evaluation_detail/finqa_response_tokens": 6560.342052,
+          "evaluation_detail/finqa_truncated_pct": 0.029061,
+          "evaluation_detail/ifbench_response_tokens": 4480.278889,
+          "evaluation_detail/ifbench_truncated_pct": 2.333333,
+          "evaluation_detail/ifeval_response_tokens": 2942.941466,
+          "evaluation_detail/ifeval_truncated_pct": 2.402957,
+          "delta/evaluation/macro6_pct": 0.0,
+          "delta/recovery/mean_pct": 0.0,
+          "delta/recovery/worst_pct": 0.0
+        },
+        "100": {
+          "evaluation/math_pct": 20.940001,
+          "evaluation/code_pct": 19.059999,
+          "evaluation/medqa_pct": 54.543076,
+          "evaluation/casehold_pct": 61.30975,
+          "evaluation/finqa_pct": 65.620461,
+          "evaluation/ifbench_pct": 41.0,
+          "evaluation/ifeval_pct": 77.63401,
+          "evaluation/instruction_following_pct": 59.317005,
+          "evaluation/macro6_pct": 46.798382,
+          "evaluation/checkpoint_step": 100.0,
+          "recovery/math_pct": 103.544312,
+          "recovery/code_pct": 63.463808,
+          "recovery/medqa_pct": 16.049413,
+          "recovery/casehold_pct": 5.724747,
+          "recovery/finqa_pct": 75.527453,
+          "recovery/instruction_following_pct": 86.403196,
+          "recovery/mean_pct": 58.452155,
+          "recovery/worst_pct": 5.724747,
+          "recovery/composite_gap_closed_pct": 62.384069,
+          "evaluation_detail/medqa_response_tokens": 4449.233045,
+          "evaluation_detail/medqa_truncated_pct": 0.0,
+          "evaluation_detail/casehold_response_tokens": 2547.340045,
+          "evaluation_detail/casehold_truncated_pct": 0.112909,
+          "evaluation_detail/finqa_response_tokens": 4533.852659,
+          "evaluation_detail/finqa_truncated_pct": 0.0,
+          "evaluation_detail/ifbench_response_tokens": 4423.333333,
+          "evaluation_detail/ifbench_truncated_pct": 1.555556,
+          "evaluation_detail/ifeval_response_tokens": 2893.020333,
+          "evaluation_detail/ifeval_truncated_pct": 1.109057,
+          "delta/evaluation/macro6_pct": 0.0,
+          "delta/recovery/mean_pct": 0.0,
+          "delta/recovery/worst_pct": 0.0
+        }
+      }
+    },
+    {
+      "key": "q17_vanilla_dn100",
+      "label": "普通 MOPD＋DN",
+      "last_step": 100,
+      "checkpoints": {
+        "40": {
+          "evaluation/math_pct": 20.34,
+          "evaluation/code_pct": 20.07,
+          "evaluation/medqa_pct": 53.705158,
+          "evaluation/casehold_pct": 58.737926,
+          "evaluation/finqa_pct": 63.847717,
+          "evaluation/ifbench_pct": 32.444443,
+          "evaluation/ifeval_pct": 75.723969,
+          "evaluation/instruction_following_pct": 54.084206,
+          "evaluation/macro6_pct": 45.130834,
+          "evaluation/checkpoint_step": 40.0,
+          "recovery/math_pct": 98.481013,
+          "recovery/code_pct": 75.44484,
+          "recovery/medqa_pct": 2.880652,
+          "recovery/casehold_pct": -19.244813,
+          "recovery/finqa_pct": 49.789005,
+          "recovery/instruction_following_pct": 43.216006,
+          "recovery/mean_pct": 41.761117,
+          "recovery/worst_pct": -19.244813,
+          "recovery/composite_gap_closed_pct": 44.500514,
+          "evaluation_detail/medqa_response_tokens": 4520.651741,
+          "evaluation_detail/medqa_truncated_pct": 0.0,
+          "evaluation_detail/casehold_response_tokens": 4230.692824,
+          "evaluation_detail/casehold_truncated_pct": 0.244637,
+          "evaluation_detail/finqa_response_tokens": 4890.670735,
+          "evaluation_detail/finqa_truncated_pct": 0.0,
+          "evaluation_detail/ifbench_response_tokens": 4749.793333,
+          "evaluation_detail/ifbench_truncated_pct": 3.0,
+          "evaluation_detail/ifeval_response_tokens": 2821.872458,
+          "evaluation_detail/ifeval_truncated_pct": 1.2939,
+          "delta/evaluation/macro6_pct": 0.998532,
+          "delta/recovery/mean_pct": 10.05579,
+          "delta/recovery/worst_pct": 2.801472
+        },
+        "100": {
+          "evaluation/math_pct": 21.219999,
+          "evaluation/code_pct": 19.59,
+          "evaluation/medqa_pct": 54.516888,
+          "evaluation/casehold_pct": 60.249657,
+          "evaluation/finqa_pct": 65.446091,
+          "evaluation/ifbench_pct": 41.888889,
+          "evaluation/ifeval_pct": 77.695625,
+          "evaluation/instruction_following_pct": 59.792257,
+          "evaluation/macro6_pct": 46.802482,
+          "evaluation/checkpoint_step": 100.0,
+          "recovery/math_pct": 105.907165,
+          "recovery/code_pct": 69.75089,
+          "recovery/medqa_pct": 15.637841,
+          "recovery/casehold_pct": -4.567581,
+          "recovery/finqa_pct": 72.995777,
+          "recovery/instruction_following_pct": 90.325532,
+          "recovery/mean_pct": 58.341604,
+          "recovery/worst_pct": -4.567581,
+          "recovery/composite_gap_closed_pct": 62.42804,
+          "evaluation_detail/medqa_response_tokens": 4490.193244,
+          "evaluation_detail/medqa_truncated_pct": 0.0,
+          "evaluation_detail/casehold_response_tokens": 3246.517438,
+          "evaluation_detail/casehold_truncated_pct": 0.119182,
+          "evaluation_detail/finqa_response_tokens": 4376.011915,
+          "evaluation_detail/finqa_truncated_pct": 0.0,
+          "evaluation_detail/ifbench_response_tokens": 4273.388889,
+          "evaluation_detail/ifbench_truncated_pct": 0.777778,
+          "evaluation_detail/ifeval_response_tokens": 2712.356131,
+          "evaluation_detail/ifeval_truncated_pct": 0.554529,
+          "delta/evaluation/macro6_pct": 0.0041,
+          "delta/recovery/mean_pct": -0.110551,
+          "delta/recovery/worst_pct": -10.292328
+        }
+      }
+    },
+    {
+      "key": "q17_adapt100",
+      "label": "渐进教师（81 步强切）",
+      "last_step": 100,
+      "checkpoints": {
+        "40": {
+          "evaluation/math_pct": 20.76,
+          "evaluation/code_pct": 18.76,
+          "evaluation/medqa_pct": 54.543076,
+          "evaluation/casehold_pct": 61.91193,
+          "evaluation/finqa_pct": 64.922989,
+          "evaluation/ifbench_pct": 32.0,
+          "evaluation/ifeval_pct": 76.586571,
+          "evaluation/instruction_following_pct": 54.293286,
+          "evaluation/macro6_pct": 45.865213,
+          "evaluation/checkpoint_step": 40.0,
+          "recovery/math_pct": 102.025316,
+          "recovery/code_pct": 59.905101,
+          "recovery/medqa_pct": 16.049413,
+          "recovery/casehold_pct": 11.571247,
+          "recovery/finqa_pct": 65.400866,
+          "recovery/instruction_following_pct": 44.941575,
+          "recovery/mean_pct": 49.982253,
+          "recovery/worst_pct": 11.571247,
+          "recovery/composite_gap_closed_pct": 52.376335,
+          "evaluation_detail/medqa_response_tokens": 2728.081697,
+          "evaluation_detail/medqa_truncated_pct": 0.0,
+          "evaluation_detail/casehold_response_tokens": 2046.704491,
+          "evaluation_detail/casehold_truncated_pct": 0.112909,
+          "evaluation_detail/finqa_response_tokens": 4674.588782,
+          "evaluation_detail/finqa_truncated_pct": 0.0,
+          "evaluation_detail/ifbench_response_tokens": 4256.818889,
+          "evaluation_detail/ifbench_truncated_pct": 2.111111,
+          "evaluation_detail/ifeval_response_tokens": 2511.499076,
+          "evaluation_detail/ifeval_truncated_pct": 1.170672,
+          "delta/evaluation/macro6_pct": 1.732911,
+          "delta/recovery/mean_pct": 18.276926,
+          "delta/recovery/worst_pct": 33.617532
+        },
+        "100": {
+          "evaluation/math_pct": 20.030001,
+          "evaluation/code_pct": 18.379999,
+          "evaluation/medqa_pct": 54.883476,
+          "evaluation/casehold_pct": 60.588383,
+          "evaluation/finqa_pct": 63.789597,
+          "evaluation/ifbench_pct": 40.333332,
+          "evaluation/ifeval_pct": 76.771408,
+          "evaluation/instruction_following_pct": 58.55237,
+          "evaluation/macro6_pct": 46.037304,
+          "evaluation/checkpoint_step": 100.0,
+          "recovery/math_pct": 95.864987,
+          "recovery/code_pct": 55.397378,
+          "recovery/medqa_pct": 21.399156,
+          "recovery/casehold_pct": -1.278927,
+          "recovery/finqa_pct": 48.945162,
+          "recovery/instruction_following_pct": 80.092532,
+          "recovery/mean_pct": 50.070048,
+          "recovery/worst_pct": -1.278927,
+          "recovery/composite_gap_closed_pct": 54.221918,
+          "evaluation_detail/medqa_response_tokens": 4296.213407,
+          "evaluation_detail/medqa_truncated_pct": 0.0,
+          "evaluation_detail/casehold_response_tokens": 3567.299398,
+          "evaluation_detail/casehold_truncated_pct": 0.207,
+          "evaluation_detail/finqa_response_tokens": 5325.739029,
+          "evaluation_detail/finqa_truncated_pct": 0.0,
+          "evaluation_detail/ifbench_response_tokens": 4455.076667,
+          "evaluation_detail/ifbench_truncated_pct": 0.888889,
+          "evaluation_detail/ifeval_response_tokens": 3185.630314,
+          "evaluation_detail/ifeval_truncated_pct": 1.478743,
+          "delta/evaluation/macro6_pct": -0.761078,
+          "delta/recovery/mean_pct": -8.382107,
+          "delta/recovery/worst_pct": -7.003674
+        }
+      }
+    },
+    {
+      "key": "q17_adaptnc100",
+      "label": "渐进教师（不强切）",
+      "last_step": 100,
+      "checkpoints": {
+        "40": {
+          "evaluation/math_pct": 20.469999,
+          "evaluation/code_pct": 18.65,
+          "evaluation/medqa_pct": 54.543076,
+          "evaluation/casehold_pct": 61.573204,
+          "evaluation/finqa_pct": 64.399887,
+          "evaluation/ifbench_pct": 34.222221,
+          "evaluation/ifeval_pct": 76.216881,
+          "evaluation/instruction_following_pct": 55.219551,
+          "evaluation/macro6_pct": 45.809286,
+          "evaluation/checkpoint_step": 40.0,
+          "recovery/math_pct": 99.578051,
+          "recovery/code_pct": 58.600237,
+          "recovery/medqa_pct": 16.049413,
+          "recovery/casehold_pct": 8.282593,
+          "recovery/finqa_pct": 57.805954,
+          "recovery/instruction_following_pct": 52.586204,
+          "recovery/mean_pct": 48.817075,
+          "recovery/worst_pct": 8.282593,
+          "recovery/composite_gap_closed_pct": 51.776545,
+          "evaluation_detail/medqa_response_tokens": 2745.251898,
+          "evaluation_detail/medqa_truncated_pct": 0.0,
+          "evaluation_detail/casehold_response_tokens": 2052.043596,
+          "evaluation_detail/casehold_truncated_pct": 0.094091,
+          "evaluation_detail/finqa_response_tokens": 4713.800058,
+          "evaluation_detail/finqa_truncated_pct": 0.0,
+          "evaluation_detail/ifbench_response_tokens": 4065.267778,
+          "evaluation_detail/ifbench_truncated_pct": 1.333333,
+          "evaluation_detail/ifeval_response_tokens": 2601.764633,
+          "evaluation_detail/ifeval_truncated_pct": 1.478743,
+          "delta/evaluation/macro6_pct": 1.676984,
+          "delta/recovery/mean_pct": 17.111748,
+          "delta/recovery/worst_pct": 30.328878
+        },
+        "100": {
+          "evaluation/math_pct": 21.280001,
+          "evaluation/code_pct": 19.360001,
+          "evaluation/medqa_pct": 54.857292,
+          "evaluation/casehold_pct": 62.225567,
+          "evaluation/finqa_pct": 65.5914,
+          "evaluation/ifbench_pct": 40.222221,
+          "evaluation/ifeval_pct": 77.51078,
+          "evaluation/instruction_following_pct": 58.866501,
+          "evaluation/macro6_pct": 47.030127,
+          "evaluation/checkpoint_step": 100.0,
+          "recovery/math_pct": 106.413511,
+          "recovery/code_pct": 67.02255,
+          "recovery/medqa_pct": 20.987647,
+          "recovery/casehold_pct": 14.616315,
+          "recovery/finqa_pct": 75.105516,
+          "recovery/instruction_following_pct": 82.685105,
+          "recovery/mean_pct": 61.138441,
+          "recovery/worst_pct": 14.616315,
+          "recovery/composite_gap_closed_pct": 64.86941,
+          "evaluation_detail/medqa_response_tokens": 3006.236449,
+          "evaluation_detail/medqa_truncated_pct": 0.0,
+          "evaluation_detail/casehold_response_tokens": 2101.27299,
+          "evaluation_detail/casehold_truncated_pct": 0.125455,
+          "evaluation_detail/finqa_response_tokens": 4431.234525,
+          "evaluation_detail/finqa_truncated_pct": 0.0,
+          "evaluation_detail/ifbench_response_tokens": 4205.403333,
+          "evaluation_detail/ifbench_truncated_pct": 1.0,
+          "evaluation_detail/ifeval_response_tokens": 2627.534196,
+          "evaluation_detail/ifeval_truncated_pct": 0.677757,
+          "delta/evaluation/macro6_pct": 0.231745,
+          "delta/recovery/mean_pct": 2.686286,
+          "delta/recovery/worst_pct": 8.891568
+        }
+      }
+    },
+    {
+      "key": "q17_best_dn100",
+      "label": "渐进教师（不强切）＋DN",
+      "last_step": 100,
+      "checkpoints": {
+        "40": {
+          "evaluation/math_pct": 19.950001,
+          "evaluation/code_pct": 18.959999,
+          "evaluation/medqa_pct": 54.700184,
+          "evaluation/casehold_pct": 61.899384,
+          "evaluation/finqa_pct": 65.2136,
+          "evaluation/ifbench_pct": 33.333332,
+          "evaluation/ifeval_pct": 75.785583,
+          "evaluation/instruction_following_pct": 54.559458,
+          "evaluation/macro6_pct": 45.880438,
+          "evaluation/checkpoint_step": 40.0,
+          "recovery/math_pct": 95.189882,
+          "recovery/code_pct": 62.277568,
+          "recovery/medqa_pct": 18.51853,
+          "recovery/casehold_pct": 11.44944,
+          "recovery/finqa_pct": 69.620243,
+          "recovery/instruction_following_pct": 47.138339,
+          "recovery/mean_pct": 50.699,
+          "recovery/worst_pct": 11.44944,
+          "recovery/composite_gap_closed_pct": 52.539606,
+          "evaluation_detail/medqa_response_tokens": 2982.485206,
+          "evaluation_detail/medqa_truncated_pct": 0.0,
+          "evaluation_detail/casehold_response_tokens": 2255.597667,
+          "evaluation_detail/casehold_truncated_pct": 0.131728,
+          "evaluation_detail/finqa_response_tokens": 5725.604185,
+          "evaluation_detail/finqa_truncated_pct": 0.0,
+          "evaluation_detail/ifbench_response_tokens": 4650.98,
+          "evaluation_detail/ifbench_truncated_pct": 3.222222,
+          "evaluation_detail/ifeval_response_tokens": 2567.593346,
+          "evaluation_detail/ifeval_truncated_pct": 1.2939,
+          "delta/evaluation/macro6_pct": 1.748136,
+          "delta/recovery/mean_pct": 18.993673,
+          "delta/recovery/worst_pct": 33.495725
+        },
+        "100": {
+          "evaluation/math_pct": 21.299999,
+          "evaluation/code_pct": 19.41,
+          "evaluation/medqa_pct": 55.590469,
+          "evaluation/casehold_pct": 62.62075,
+          "evaluation/finqa_pct": 65.242661,
+          "evaluation/ifbench_pct": 40.0,
+          "evaluation/ifeval_pct": 76.155266,
+          "evaluation/instruction_following_pct": 58.077633,
+          "evaluation/macro6_pct": 47.040252,
+          "evaluation/checkpoint_step": 100.0,
+          "recovery/math_pct": 106.58227,
+          "recovery/code_pct": 67.615658,
+          "recovery/medqa_pct": 32.510293,
+          "recovery/casehold_pct": 18.453104,
+          "recovery/finqa_pct": 70.042179,
+          "recovery/instruction_following_pct": 76.174446,
+          "recovery/mean_pct": 61.896325,
+          "recovery/worst_pct": 18.453104,
+          "recovery/composite_gap_closed_pct": 64.977996,
+          "evaluation_detail/medqa_response_tokens": 3032.057869,
+          "evaluation_detail/medqa_truncated_pct": 0.0,
+          "evaluation_detail/casehold_response_tokens": 2080.779074,
+          "evaluation_detail/casehold_truncated_pct": 0.081546,
+          "evaluation_detail/finqa_response_tokens": 4514.981401,
+          "evaluation_detail/finqa_truncated_pct": 0.0,
+          "evaluation_detail/ifbench_response_tokens": 4214.264444,
+          "evaluation_detail/ifbench_truncated_pct": 0.888889,
+          "evaluation_detail/ifeval_response_tokens": 2740.639556,
+          "evaluation_detail/ifeval_truncated_pct": 1.232286,
+          "delta/evaluation/macro6_pct": 0.24187,
+          "delta/recovery/mean_pct": 3.44417,
+          "delta/recovery/worst_pct": 12.728357
+        }
+      }
+    },
+    {
+      "key": "q17_adaptnc_inj100",
+      "label": "渐进教师＋医疗法律注入",
+      "last_step": 100,
+      "checkpoints": {
+        "40": {
+          "evaluation/math_pct": 15.34,
+          "evaluation/code_pct": 15.79,
+          "evaluation/medqa_pct": 58.418434,
+          "evaluation/casehold_pct": 66.898758,
+          "evaluation/finqa_pct": 48.0093,
+          "evaluation/ifbench_pct": 25.777779,
+          "evaluation/ifeval_pct": 60.258781,
+          "evaluation/instruction_following_pct": 43.01828,
+          "evaluation/macro6_pct": 41.245795,
+          "evaluation/checkpoint_step": 40.0,
+          "recovery/math_pct": 56.28692,
+          "recovery/code_pct": 24.673784,
+          "recovery/medqa_pct": 76.95473,
+          "recovery/casehold_pct": 59.98782,
+          "recovery/finqa_pct": -180.168771,
+          "recovery/instruction_following_pct": -48.112983,
+          "recovery/mean_pct": -1.72975,
+          "recovery/worst_pct": -180.168771,
+          "recovery/composite_gap_closed_pct": 2.835547,
+          "evaluation_detail/medqa_response_tokens": 2484.415292,
+          "evaluation_detail/medqa_truncated_pct": 0.366588,
+          "evaluation_detail/casehold_response_tokens": 1582.448689,
+          "evaluation_detail/casehold_truncated_pct": 0.119182,
+          "evaluation_detail/finqa_response_tokens": 2586.972101,
+          "evaluation_detail/finqa_truncated_pct": 1.133391,
+          "evaluation_detail/ifbench_response_tokens": 3646.315556,
+          "evaluation_detail/ifbench_truncated_pct": 2.888889,
+          "evaluation_detail/ifeval_response_tokens": 2571.06716,
+          "evaluation_detail/ifeval_truncated_pct": 2.834258,
+          "delta/evaluation/macro6_pct": -2.886507,
+          "delta/recovery/mean_pct": -33.435077,
+          "delta/recovery/worst_pct": -158.122486
+        },
+        "100": {
+          "evaluation/math_pct": 15.55,
+          "evaluation/code_pct": 16.5,
+          "evaluation/medqa_pct": 57.894737,
+          "evaluation/casehold_pct": 67.601303,
+          "evaluation/finqa_pct": 47.311829,
+          "evaluation/ifbench_pct": 27.333334,
+          "evaluation/ifeval_pct": 60.628468,
+          "evaluation/instruction_following_pct": 43.980901,
+          "evaluation/macro6_pct": 41.473128,
+          "evaluation/checkpoint_step": 100.0,
+          "recovery/math_pct": 58.059072,
+          "recovery/code_pct": 33.096085,
+          "recovery/medqa_pct": 68.724282,
+          "recovery/casehold_pct": 66.808753,
+          "recovery/finqa_pct": -190.295344,
+          "recovery/instruction_following_pct": -40.168306,
+          "recovery/mean_pct": -0.629243,
+          "recovery/worst_pct": -190.295344,
+          "recovery/composite_gap_closed_pct": 5.273571,
+          "evaluation_detail/medqa_response_tokens": 3950.825871,
+          "evaluation_detail/medqa_truncated_pct": 0.0,
+          "evaluation_detail/casehold_response_tokens": 1914.836282,
+          "evaluation_detail/casehold_truncated_pct": 0.094091,
+          "evaluation_detail/finqa_response_tokens": 1325.104621,
+          "evaluation_detail/finqa_truncated_pct": 0.029061,
+          "evaluation_detail/ifbench_response_tokens": 2508.458889,
+          "evaluation_detail/ifbench_truncated_pct": 3.666667,
+          "evaluation_detail/ifeval_response_tokens": 1760.529883,
+          "evaluation_detail/ifeval_truncated_pct": 3.142329,
+          "delta/evaluation/macro6_pct": -5.325254,
+          "delta/recovery/mean_pct": -59.081398,
+          "delta/recovery/worst_pct": -196.020091
+        }
+      }
+    }
+  ],
+  "teacher_transitions": {
+    "q17_adapt100": {
+      "math": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          1.0
+        ]
+      ],
+      "code": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          1.0
+        ]
+      ],
+      "med": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          0.125
+        ],
+        [
+          49,
+          0.25
+        ],
+        [
+          81,
+          1.0
+        ]
+      ],
+      "law": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          0.125
+        ],
+        [
+          27,
+          0.25
+        ],
+        [
+          81,
+          1.0
+        ]
+      ],
+      "fin": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          1.0
+        ]
+      ],
+      "if": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          1.0
+        ]
+      ]
+    },
+    "q17_adaptnc100": {
+      "math": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          1.0
+        ]
+      ],
+      "code": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          1.0
+        ]
+      ],
+      "med": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          0.125
+        ],
+        [
+          47,
+          0.25
+        ]
+      ],
+      "law": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          0.125
+        ],
+        [
+          26,
+          0.25
+        ]
+      ],
+      "fin": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          1.0
+        ]
+      ],
+      "if": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          1.0
+        ]
+      ]
+    },
+    "q17_best_dn100": {
+      "math": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          1.0
+        ]
+      ],
+      "code": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          1.0
+        ]
+      ],
+      "med": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          0.125
+        ],
+        [
+          35,
+          0.25
+        ]
+      ],
+      "law": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          0.125
+        ],
+        [
+          26,
+          0.25
+        ]
+      ],
+      "fin": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          1.0
+        ]
+      ],
+      "if": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          1.0
+        ]
+      ]
+    },
+    "q17_adaptnc_inj100": {
+      "math": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          0.125
+        ],
+        [
+          4,
+          0.25
+        ],
+        [
+          7,
+          0.5
+        ],
+        [
+          10,
+          0.75
+        ],
+        [
+          18,
+          1.0
+        ]
+      ],
+      "code": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          0.125
+        ],
+        [
+          20,
+          0.25
+        ],
+        [
+          23,
+          0.5
+        ],
+        [
+          26,
+          0.75
+        ],
+        [
+          29,
+          1.0
+        ]
+      ],
+      "med": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          0.125
+        ],
+        [
+          27,
+          0.25
+        ],
+        [
+          30,
+          0.5
+        ],
+        [
+          33,
+          0.75
+        ],
+        [
+          36,
+          1.0
+        ]
+      ],
+      "law": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          0.125
+        ],
+        [
+          41,
+          0.25
+        ],
+        [
+          44,
+          0.5
+        ],
+        [
+          47,
+          0.75
+        ],
+        [
+          50,
+          1.0
+        ]
+      ],
+      "fin": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          0.125
+        ],
+        [
+          55,
+          0.25
+        ],
+        [
+          58,
+          0.5
+        ],
+        [
+          64,
+          0.75
+        ],
+        [
+          72,
+          1.0
+        ]
+      ],
+      "if": [
+        [
+          1,
+          0.5
+        ],
+        [
+          2,
+          0.125
+        ],
+        [
+          47,
+          0.25
+        ],
+        [
+          50,
+          0.5
+        ],
+        [
+          53,
+          0.75
+        ],
+        [
+          56,
+          1.0
+        ]
+      ]
+    }
+  },
+  "dn_multipliers": {
+    "q17_vanilla_dn100": {
+      "1–40": {
+        "math": 3.5185,
+        "code": 3.0074,
+        "med": 0.6199,
+        "law": 0.7715,
+        "fin": 2.0818,
+        "if": 2.6448
+      },
+      "41–100": {
+        "math": 4.0,
+        "code": 3.9908,
+        "med": 0.5201,
+        "law": 0.7359,
+        "fin": 3.5143,
+        "if": 3.5976
+      }
+    },
+    "q17_best_dn100": {
+      "1–40": {
+        "math": 1.5042,
+        "code": 0.9923,
+        "med": 2.3532,
+        "law": 2.7022,
+        "fin": 0.6841,
+        "if": 0.9085
+      },
+      "41–100": {
+        "math": 2.7567,
+        "code": 1.3939,
+        "med": 0.7115,
+        "law": 1.1128,
+        "fin": 0.7969,
+        "if": 0.7951
+      }
+    }
+  },
+  "scope": "Existing student training and completed evaluations only; no new training, seeds or evaluations.",
+  "curve_policy": "Only completed checkpoints. Lines connect observations; no intermediate evaluations, speedup or AULC inferred.",
+  "notes": {
+    "conclusion": "这一轮有正向结果，但主要体现在较早检查点的领先和医疗、法律的恢复，最终总分只小幅提高。渐进教师（不强切）＋DN 在第 100 步的六领域均分是 47.04，普通 MOPD 是 46.80，差 0.24 分。按固定端点计算，平均恢复率是 61.90% 对 58.45%，最差领域恢复率是 18.45% 对 5.72%。这些是本轮观测，尚不能把小幅最终差距说成稳定优势。",
+    "reading": "先看六领域正式评测和同检查点的差值，再看平均恢复率与最差领域恢复率，最后用训练曲线解释过程。原始均分没有因为医学 55 分、数学 21 分就自动失效：它仍是六域各占六分之一，每域增加 1 分的贡献相同。恢复率改用教师相对起点的提升空间作为尺度，会给空间较小的领域更高权重，因此两种分数并列展示。",
+    "definitions": "六域均分 = mean(数学、代码、MedQA、CaseHOLD、FinQA、(IFBench+IFEval)/2)。领域恢复率 R_d = 100×(学生分−起点分)/(该域教师分−起点分)；平均恢复率是六个 R_d 的平均，最差恢复率取最小值。IF 先平均两项原始分，再算恢复率。恢复率不截在 0–100：负数表示低于起点，超过 100 表示高于教师参考。先平均原始分再算整体恢复率是另一指标，普通组为 62.38%、最佳组为 64.98%，不能与 58.45%、61.90% 混用。",
+    "positive": "不强切组第 40 步六域均分为 45.81，普通组为 44.13，高 1.68 分；平均恢复率为 48.82% 对 31.71%。不强切＋DN 组第 40 步为 45.88。到 100 步，最终均分差缩小到约 0.24。法律是最差领域，最佳组由普通组的 61.31 提到 62.62（+1.31 原始分，+12.73 恢复率百分点）；医学由 54.54 提到 55.59（+1.05 原始分）。相对普通＋DN，法律为 +2.37 分。与此同时，相对普通组 IFBench −1.00、IFEval −1.48，金融 −0.38，收益有取舍。",
+    "curves": "现有 1.7B 正式评测主要只有第 40、100 步两个点。连线仅帮助辨认两个观测点，不代表中间步骤已有评测。可以说“40 步时领先”，不能据此确认“相当于普通组 70 步”、精确加速倍数或完整训练 AULC；也不能由 100 步接近断定已经达到模型上限。当前只整理已有结果。",
+    "controller": "不强切不是禁止使用完整教师，而是取消第 81 步的统一强制切换。日志确认：第 1 步所有域实际使用 λ=0.5；第 2 步起数学、代码、金融、IF 使用 λ=1，医疗、法律改用 λ=0.125。不强切组的法律在第 26 步、医疗在第 47 步升到 0.25；加 DN 后分别在第 26、35 步升到 0.25，两组直到第 100 步都没有把这两域升到 1。旧版两域在第 81 步强制变为 1。取消强切后的最终分数高 0.99，支持强切可能有害，但不证明它是唯一原因。",
+    "normalization": "这里的 DN 是接入 DN-MOPD 的按领域 advantage 缩放组件，不是完整复现它的论文配方。前 40 步，普通＋DN 对医疗/法律的平均乘子为 0.62/0.77，渐进＋DN 则为 2.35/2.70。后者确实会放大已被中间教师缩小的信号；这与两种机制部分抵消的解释相容，但乘子不是实际梯度贡献，不能直接宣称两种方法完全等价。叠加后均分只从 47.03 到 47.04，医学却从 54.86 到 55.59，IF 有回落，不能说每个领域都完全没有变化。",
+    "injection": "注入组第 100 步医学 57.89、法律 67.60，金融却只有 47.31，整体降至 41.47。它换了学生起点，因此这两域的提升不能全归于渐进教师。金融回答长度约 1325 token，而非注入组约 4400–4500；医学则存在不同方向的长度变化，不能概括成所有回答都变短。长度、截断、格式是诊断线索，尚不能单凭它们证明风格变化导致掉分，更不能推出知识只能通过参数传递。",
+    "kl": "token 分析是普通组第 40 步在医疗、法律各 32 条回答上的 |log p学生−log p教师|，不是对完整分布计算的精确 KL。医疗中内容类词占 49.50% token、43.37% 差异质量；功能/话语词占 32.25% token、42.78% 差异质量。思考段占 94.92% token、95.46% 差异质量，不能把“95% 在思考段”单独解释为异常。它支持差异含有格式、话语成分，但粗分类不能把知识与风格严格分开，也不能证明大部分训练预算都浪费在格式。",
+    "reference_note": "恢复率端点沿用 11 月 14 日 H800 状态表的固定参考，来源混合 H800/B200 的同协议评测。数学、代码端点只有保留两位小数的记录；医疗、法律教师另一次 H800 评测为 60.28、70.87，与本表不同。端点版本与精确值已保存，不能为扩大收益而换分母。聊天记录中的约 33.0/49.5、61.3 不再直接沿用；此处按同一 IF 聚合方式重算。教师组合是分领域参考，不是一个可部署模型，也不是能力的硬上限。",
+    "literature": "[Open-MOPD](https://arxiv.org/html/2608.19098) 同时报原始领域均分和相对教师组合的恢复率。[P²-MOPD](https://arxiv.org/html/2611.03953) 同时报告原始分、逐域平均恢复率、最差恢复率和固定检查点的 AULC。[DN-MOPD](https://github.com/LiXin97/DN-MOPD) 主要报告原始基准均分及配对区间。没有“所有论文都不直接平均原始分”的统一规定；也不能因别人使用恢复率，就把本轮小幅增益视为已经证实的稳定提升。",
+    "critic": "critic/score/mean 不是六域能力分数。本项目的奖励实现中，训练数学题由 Math-Verify 记录对错，其他训练领域用零分占位；它可用于重建数学训练题正确率。纯蒸馏未把任务奖励用于优化，不等于记录的数学对错毫无意义。它只应放在数学训练诊断区。bridge/abs_k1/<域> 表示与当前教师的 token 概率差，DN 乘子、回答长度、截断率、实际使用的教师强度用于诊断，也不能替代正式评测。"
+  }
+}

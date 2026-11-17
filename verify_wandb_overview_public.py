@@ -35,12 +35,16 @@ def walk(value):
             walk(child)
 walk(spec)
 assert panels and all(p["xAxis"] in {"plot/step", "train/step"} for p in panels)
-evaluations = [p for p in panels if any(y.startswith("evaluation/") for y in p["metrics"])]
+evaluations = [p for p in panels if any(y.startswith(("evaluation/", "recovery/", "comparison/", "evaluation_detail/")) for y in p["metrics"])]
 assert evaluations and all(p.get("smoothingWeight", 0) == 0 for p in evaluations)
 required = {"evaluation/"+k+"_pct" for k in ["math", "code", "medqa", "casehold", "finqa", "instruction_following"]}
 assert required <= {m for p in panels for m in p["metrics"]}
 assert {"bridge/abs_k1/"+d for d in ["math","code","med","law","fin","if"]} <= {m for p in panels for m in p["metrics"]}
 assert "六领域正式评测结果" in json.dumps(spec, ensure_ascii=False)
+assert {"recovery/mean_pct", "recovery/worst_pct", "comparison/macro6_gain_pp"} <= {m for p in panels for m in p["metrics"]}
+for p in panels:
+    if any(m.startswith("recovery/") for m in p["metrics"]):
+        assert p.get("rangeY", [None,None]) in ([None,None], None), p.get("rangeY")
 history_query = """query($entity:String!, $project:String!, $run:String!, $specs:[JSONString!]!) {
  project(name:$project, entityName:$entity) { run(name:$run) { sampledHistory(specs:$specs) } }
 }"""
@@ -72,4 +76,17 @@ for domain in ["math", "code", "med", "law", "fin", "if"]:
         points = json.loads(points)
     assert points and all(p[metric] >= 0 for p in points), metric
     print("ANONYMOUS DOMAIN TRAINING", metric, points, flush=True)
+for run, metric, expected in [
+    ("bf3adff1d85d08f6", "evaluation/macro6_pct", 47.040252),
+    ("bf3adff1d85d08f6", "recovery/mean_pct", 61.896325),
+    ("bf3adff1d85d08f6", "recovery/worst_pct", 18.453104),
+    ("bff34503e96342d3", "recovery/worst_pct", -190.295344),
+]:
+    result = query(history_query, {**VARIABLES, "run": run,
+        "specs": [json.dumps({"keys": ["plot/step", metric], "samples": 100})]})
+    points = result["project"]["run"]["sampledHistory"][0]
+    if isinstance(points, str):
+        points = json.loads(points)
+    assert any(p["plot/step"]==100 and abs(p[metric]-expected)<.0001 for p in points), (metric,points)
+    print("ANONYMOUS FINAL AND RECOVERY", run, metric, points, flush=True)
 print("VERIFIED NATIVE REPORT", len(panels), "line charts; original training steps; unsmoothed evaluations", flush=True)

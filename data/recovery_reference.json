@@ -1,0 +1,39 @@
+{
+  "version": "q17_h800_status_20261114_v1",
+  "definition": "100*(student-base)/(teacher-base) per domain; IF scores averaged before normalization; unweighted mean and minimum over six domains; no clipping",
+  "base": {
+    "math": 8.67,
+    "code": 13.71,
+    "medqa": 53.52186436239854,
+    "casehold": 60.720110400200724,
+    "finqa": 60.418482999128166,
+    "ifbench": 26.777777777777782,
+    "ifeval": 70.91805298829328,
+    "instruction_following": 48.847915383035534
+  },
+  "teacher": {
+    "math": 20.52,
+    "code": 22.14,
+    "medqa": 59.88478659334904,
+    "casehold": 71.0199473089951,
+    "finqa": 67.30601569311246,
+    "ifbench": 43.55555555555555,
+    "ifeval": 78.37338262476895,
+    "instruction_following": 60.964469090162254
+  },
+  "sources": {
+    "math_code": "Recorded B200 endpoints copied in reports/q17_20261112/STATUS_H800.md; rounded to 0.01 points",
+    "medqa_base": "H800 reports/q17_20261112/eval_theta0/metrics.json",
+    "casehold_base": "origin/b200:reports/q17_20261112/eval_theta0_mlif/metrics.json",
+    "finqa_base_teacher": "origin/b200:reports/q17_20261112/eval_{theta0,teacher}_fin/metrics.json",
+    "medqa_casehold_teacher": "origin/b200:reports/q17_20261112/eval_teacher_{med,law}/metrics.json",
+    "if_base_teacher": "H800 reports/q17_20261112/eval_{theta0,teacher}_if/metrics.json",
+    "b200_revision": "c8a8a41b20c5c1235fe0d9004d25ef77c2f7b743"
+  },
+  "limitations": [
+    "Fixed endpoints reproduce the existing H800 status table; they combine H800 and B200 evaluation samples.",
+    "H800 repeat teacher evaluations differ (MedQA 60.27756, CaseHOLD 70.86940); normalized numbers depend on endpoint choice.",
+    "Teacher composite is a domain-routed reference, not a proven upper bound.",
+    "Recovery is an additional descriptive metric; original raw macro6 endpoint is retained."
+  ]
+}

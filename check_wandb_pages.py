@@ -21,7 +21,12 @@ async def main():
                     info={'input':url,'url':page.url,'status':response.status if response else None,'title':await page.title(),'body':body}
                     print(json.dumps(info,ensure_ascii=False),flush=True)
                     assert 'Page not found' not in body and 'We couldn’t find this page' not in body, url
-                    assert '六领域正式评测' in body and '1.7B 普通 MOPD' in body, url
+                    assert '六领域正式评测' in body, url
+                    if '/reports/' in path:
+                        assert '47.04' in body and '61.90' in body and '18.45' in body, url
+                        assert '94/100' not in body and '等待完整评测' not in body, url
+                    else:
+                        assert '平均领域恢复率' in body and '最差领域恢复率' in body, url
                     i=len(list(dest.glob('*.json')))
                     (dest/f'{i}.json').write_text(json.dumps(info,ensure_ascii=False,indent=2))
                     await page.screenshot(path=str(dest/f'{i}.png'),full_page=False)
