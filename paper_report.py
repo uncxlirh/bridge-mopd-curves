@@ -114,10 +114,10 @@ def build():
     return wr.Report(entity=ENTITY, project=PROJECT, title=TITLE, description="做了什么 · 为什么 · 结果", width="readable", blocks=blocks)
 
 
-def forge_url(url):  # wr.Report.from_url parses the Forge form; the public wandb.ai form fails on this title
+def forge_url(url):  # the form the SDK itself returns after save (Forge host, no /wandb prefix); wr.Report.from_url parses it
     from urllib.parse import urlsplit, urlunsplit
     p = urlsplit(url)
-    return urlunsplit(("https", "forge.coreweave.com", "/wandb" + p.path, p.query, p.fragment)) if p.netloc == "wandb.ai" else url
+    return urlunsplit(("https", "forge.coreweave.com", p.path, p.query, p.fragment)) if p.netloc == "wandb.ai" else url
 
 
 def main():
