@@ -119,6 +119,11 @@ def main():
     report = build()
     refs_file = Path("paper_report_ref.json")
     refs = json.loads(refs_file.read_text()) if refs_file.exists() else {}
+    if not refs.get("report"):  # the ref file is not committed back: find an earlier run's report by title
+        for r in wandb.Api().reports(f"{ENTITY}/{PROJECT}", per_page=100):
+            if getattr(r, "display_name", None) == TITLE or getattr(r, "name", None) == TITLE:
+                refs["report"] = r.url
+                break
     if refs.get("report"):
         old = wr.Report.from_url(refs["report"])
         old.title, old.description, old.blocks, old.width = report.title, report.description, report.blocks, report.width
@@ -127,6 +132,7 @@ def main():
     refs["report"] = public_url(report.url)
     refs_file.write_text(json.dumps(refs, ensure_ascii=False, indent=2))
     print("PAPER REPORT", refs["report"], flush=True)
+    print("::notice title=paper report::" + refs["report"], flush=True)
     assert wr.Report.from_url(report.url).title == TITLE
     print("VERIFIED", flush=True)
 
