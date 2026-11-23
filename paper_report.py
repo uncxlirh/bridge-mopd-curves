@@ -114,10 +114,9 @@ def build():
     return wr.Report(entity=ENTITY, project=PROJECT, title=TITLE, description="做了什么 · 为什么 · 结果", width="readable", blocks=blocks)
 
 
-def forge_url(url):  # the form the SDK itself returns after save (Forge host, no /wandb prefix); wr.Report.from_url parses it
-    from urllib.parse import urlsplit, urlunsplit
-    p = urlsplit(url)
-    return urlunsplit(("https", "forge.coreweave.com", p.path, p.query, p.fragment)) if p.netloc == "wandb.ai" else url
+def forge_url(url):  # the form wr.Report.from_url parses: Forge host, no /wandb prefix, plain slug before the id
+    rid_ = url.rsplit("--", 1)[-1]
+    return f"https://forge.coreweave.com/{ENTITY}/{PROJECT}/reports/r--{rid_}"
 
 
 def main():
@@ -135,6 +134,8 @@ def main():
             loaded.append(wr.Report.from_url(forge_url(u)))
         except Exception as e:
             print("::notice title=report load failed::" + u + " " + repr(e)[:200], flush=True)
+    if found and not loaded:  # never create another copy when the existing ones cannot be opened
+        raise SystemExit("existing reports found but none could be loaded")
     if loaded:
         keep, extra = loaded[0], loaded[1:]
         keep.title, keep.description, keep.blocks, keep.width = report.title, report.description, report.blocks, report.width
