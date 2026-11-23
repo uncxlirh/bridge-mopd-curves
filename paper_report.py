@@ -120,12 +120,20 @@ def main():
     refs_file = Path("paper_report_ref.json")
     refs = json.loads(refs_file.read_text()) if refs_file.exists() else {}
     if not refs.get("report"):  # the ref file is not committed back: find an earlier run's report by title
-        for r in wandb.Api().reports(f"{ENTITY}/{PROJECT}", per_page=100):
-            if getattr(r, "display_name", None) == TITLE or getattr(r, "name", None) == TITLE:
-                refs["report"] = r.url
-                break
+        try:
+            for r in wandb.Api().reports(path=f"{ENTITY}/{PROJECT}"):
+                if TITLE in (getattr(r, "display_name", None), getattr(r, "name", None), getattr(r, "title", None)):
+                    refs["report"] = r.url
+                    break
+        except Exception as e:  # lookup is only to avoid a duplicate report
+            print("::notice title=report lookup failed::" + repr(e)[:300], flush=True)
+    old = None
     if refs.get("report"):
-        old = wr.Report.from_url(refs["report"])
+        try:
+            old = wr.Report.from_url(refs["report"])
+        except Exception as e:
+            print("::notice title=report load failed::" + repr(e)[:300], flush=True); old = None
+    if refs.get("report") and old is not None:
         old.title, old.description, old.blocks, old.width = report.title, report.description, report.blocks, report.width
         report = old
     report.save()
@@ -138,4 +146,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        import traceback
+        print("::error title=paper report failed::" + traceback.format_exc()[-900:].replace("\n", " | "), flush=True)
+        raise
