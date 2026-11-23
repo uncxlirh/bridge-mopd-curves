@@ -19,7 +19,7 @@ METHODS = [  # name, color, seeds, numbers
     ("渐进式教师（我们）", "#c0392b", 3, {"s40_mean": 50.59, "s40_worst": 9.08, "s40_avg6": 45.93,
                                      "s100_mean": 63.45, "s100_worst": 15.75, "s100_avg6": 47.21, "share_medlaw": 25.4}),
 ]
-rid = lambda n: "sum" + hashlib.sha256(("paper-2026-11-23/" + n).encode()).hexdigest()[:12]  # noqa: E731
+rid = lambda n: "sum" + hashlib.sha256(("paper-2026-11-23-v2/" + n).encode()).hexdigest()[:12]  # noqa: E731
 
 
 def public_url(url):
@@ -34,8 +34,60 @@ def upload():
                          group="汇报 2026-11-23", job_type="report-summary", tags=["report-summary"],
                          config={"seeds": seeds, "source": "PAIRED_CI.md / SIGNAL.md (bridge-mopd main)"},
                          settings=wandb.Settings(disable_git=True, disable_code=True, x_disable_stats=True, console="off"))
+        if not run.summary.get("history_done"):  # learning curve: step 0 (the model itself), 40, 100
+            run.define_metric("plot/step"); run.define_metric("*", step_metric="plot/step")
+            for st, row in [(0, SUMMARY_STEPS[0]), (40, {"mean": v["s40_mean"], "worst": v["s40_worst"], "avg6": v["s40_avg6"]}),
+                            (100, {"mean": v["s100_mean"], "worst": v["s100_worst"], "avg6": v["s100_avg6"]})]:
+                run.log({"plot/step": st, "recovery/mean_pct": row["mean"], "recovery/worst_pct": row["worst"], "score/avg6": row["avg6"]})
         for k, x in v.items():
             run.summary[k] = x
+        run.summary["history_done"] = True
+        run.finish()
+
+
+D6 = ["math", "code", "med", "law", "fin", "if"]
+CURVES = [  # name, color, source: W&B snapshot (data/<id>.json) or B200 export (paper/*.json)
+    ("每步意见 · 普通 MOPD", "#9e9e9e", "data/73d3a9cbb33325f3.json"),
+    ("每步意见 · 只调小信号", "#f2a65a", "paper/sigmatch_s43.json"),
+    ("每步意见 · 渐进式教师", "#c0392b", "data/838ab96e2e8f1917.json"),
+]
+SUMMARY_STEPS = {0: {"mean": 0.0, "worst": 0.0, "avg6": 40.98}}  # step 0 = Qwen3-1.7B itself
+
+
+def steps_of(src):
+    j = json.loads(Path(src).read_text())
+    if "steps" in j:  # B200 export: per step, per domain abs_k1 / resp_len / signal weight
+        return {int(s): {d: v[d]["abs_k1"] * v[d]["resp_len"] * v[d]["w"] for d in D6} for s, v in j["steps"].items()}, {}
+    m = j["metrics"]
+    k = {d: dict(map(tuple, m["bridge/abs_k1/" + d])) for d in D6}
+    L = {d: dict(map(tuple, m["bridge/resp_len/" + d])) for d in D6}
+    lam = {d: dict(map(tuple, m.get("bridge/lam/" + d, []))) for d in ("med", "law")}
+    common = set.intersection(*[set(k[d]) & set(L[d]) for d in D6])
+    return {int(s): {d: k[d][s] * L[d][s] for d in D6} for s in common}, lam
+
+
+def start(name, rid_, cfg):
+    return wandb.init(entity=ENTITY, project=PROJECT, id=rid_, name=name, resume="allow", mode="online",
+                      group="汇报 2026-11-23", job_type="report-summary", tags=["report-summary"], config=cfg,
+                      settings=wandb.Settings(disable_git=True, disable_code=True, x_disable_stats=True, console="off"))
+
+
+def upload_curves():
+    for name, _, src in CURVES:
+        run = start(name, rid(name), {"source": src})
+        if run.summary.get("history_done"):
+            run.finish(); continue
+        run.define_metric("plot/step"); run.define_metric("*", step_metric="plot/step")
+        sig, lam = steps_of(src)
+        for s in sorted(sig):
+            w = sig[s]; tot = sum(w.values())
+            row = {"plot/step": s, "share/medlaw_pct": 100 * (w["med"] + w["law"]) / tot}
+            row.update({f"share/{d}_pct": 100 * w[d] / tot for d in D6})
+            for d in ("med", "law"):
+                if lam.get(d) and s in lam[d]:
+                    row[f"teacher/{d}_lambda"] = lam[d][s]
+            run.log(row)
+        run.summary["history_done"] = True
         run.finish()
 
 
@@ -45,16 +97,25 @@ def bar(title, metric, rng, pos, xlabel="%"):
                       layout=wr.Layout(x=(pos % 2) * 12, y=(pos // 2) * 7, w=12, h=7))
 
 
+def line(title, keys, pos, rng=(None, None), ylabel="%", smooth=False, w=12):
+    return wr.LinePlot(title=title, x="plot/step", y=keys, title_x="训练步数", title_y=ylabel, range_y=rng,
+                       smoothing_type="exponential" if smooth else "none", smoothing_factor=.6 if smooth else 0,
+                       smoothing_show_original=smooth, aggregate=False, max_runs_to_show=4, legend_position="south",
+                       font_size="medium", layout=wr.Layout(x=(pos % 2) * 12, y=(pos // 2) * 8, w=w, h=8))
+
+
 def grid(names, panels):
     rs = wr.Runset(entity=ENTITY, project=PROJECT, name="汇报",
                    filters=[Metric("ID").isin([rid(n) for n in names])],
-                   run_settings={rid(n): wr.RunSettings(color=c, disabled=False) for n, c, _, _ in METHODS if n in names})
+                   run_settings={rid(n): wr.RunSettings(color=c, disabled=False)
+                                 for n, c in [(m[0], m[1]) for m in METHODS] + [(c[0], c[1]) for c in CURVES] if n in names})
     return wr.PanelGrid(runsets=[rs], panels=panels, hide_run_sets=True)
 
 
 def build():
     allm = [m[0] for m in METHODS]
     main2 = ["普通 MOPD", "渐进式教师（我们）"]
+    curv = [c[0] for c in CURVES]
     blocks = [
         wr.P("Bridge-MOPD · Qwen3-1.7B · 六个领域 · 训练 100 步 · 2026 年 11 月 23 日"),
         wr.H1("一分钟看懂"),
@@ -70,6 +131,8 @@ def build():
                          "负数表示比开始时还差。六科各算一个，再看平均和最差的那一科。"),
         wr.H1("结果一：学得更多"),
         wr.P("六科平均学到多少（三个随机种子的平均）。"),
+        grid(main2, [line("随训练步数：平均学到多少", ["recovery/mean_pct"], 0, (0, 70)),
+                     line("随训练步数：最差一科", ["recovery/worst_pct"], 1, (-30, 30))]),
         grid(main2, [bar("训练 40 步", "s40_mean", (0, 70), 0), bar("训练 100 步", "s100_mean", (0, 70), 1)]),
         wr.MarkdownBlock(
             "| | 40 步 | 100 步 |\n|---|---:|---:|\n"
@@ -85,7 +148,11 @@ def build():
             "| 差 | **+32.3**（+9.9 ～ +37.1） | **+9.0**（+3.4 ～ +29.8） |"),
         wr.H1("为什么有效：意见分得更均匀"),
         wr.P("前 40 步里，医疗、法律的批改意见占全部意见的比例："),
-        grid(allm, [bar("医疗 + 法律占的意见", "share_medlaw", (0, 100), 0)]),
+        grid(curv, [line("每一步：医疗 + 法律占的意见", ["share/medlaw_pct"], 0, (0, 100), smooth=True, w=24)]),
+        wr.P("普通 MOPD 一直在 75% 上下；渐进式教师从第 2 步起降到约 25%，之后随着医疗、法律的老师升档慢慢回升。"
+             "只调小信号的对照被强行压到同样的比例。"),
+        grid([CURVES[2][0]], [line("渐进式教师：医疗、法律的老师档位（1 = 真老师）", ["teacher/med_lambda", "teacher/law_lambda"], 0, (0, 1), ylabel="档位", w=24)]),
+        grid(allm, [bar("前 40 步平均：医疗 + 法律占的意见", "share_medlaw", (0, 100), 0)]),
         wr.MarkdownBlock(
             "中间老师同时做了两件事。我们把它们拆开各做一遍：\n\n"
             "| 做法 | 医疗+法律的意见 | 40 步平均学到 | 40 步最差一科 |\n|---|---:|---:|---:|\n"
@@ -121,6 +188,7 @@ def forge_url(url):  # the form wr.Report.from_url parses: Forge host, no /wandb
 
 def main():
     upload()
+    upload_curves()
     report = build()
     found = []
     try:
