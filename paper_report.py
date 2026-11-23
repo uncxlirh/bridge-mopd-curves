@@ -114,35 +114,41 @@ def build():
     return wr.Report(entity=ENTITY, project=PROJECT, title=TITLE, description="做了什么 · 为什么 · 结果", width="readable", blocks=blocks)
 
 
+def forge_url(url):  # wr.Report.from_url parses the Forge form; the public wandb.ai form fails on this title
+    from urllib.parse import urlsplit, urlunsplit
+    p = urlsplit(url)
+    return urlunsplit(("https", "forge.coreweave.com", "/wandb" + p.path, p.query, p.fragment)) if p.netloc == "wandb.ai" else url
+
+
 def main():
     upload()
     report = build()
-    refs_file = Path("paper_report_ref.json")
-    refs = json.loads(refs_file.read_text()) if refs_file.exists() else {}
-    if not refs.get("report"):  # the ref file is not committed back: find an earlier run's report by title
+    found = []
+    try:
+        found = [r.url for r in wandb.Api().reports(path=f"{ENTITY}/{PROJECT}")
+                 if TITLE in (getattr(r, "display_name", None), getattr(r, "name", None), getattr(r, "title", None))]
+    except Exception as e:
+        print("::notice title=report lookup failed::" + repr(e)[:300], flush=True)
+    loaded = []
+    for u in found:
         try:
-            for r in wandb.Api().reports(path=f"{ENTITY}/{PROJECT}"):
-                if TITLE in (getattr(r, "display_name", None), getattr(r, "name", None), getattr(r, "title", None)):
-                    refs["report"] = r.url
-                    break
-        except Exception as e:  # lookup is only to avoid a duplicate report
-            print("::notice title=report lookup failed::" + repr(e)[:300], flush=True)
-    old = None
-    if refs.get("report"):
-        try:
-            old = wr.Report.from_url(refs["report"])
+            loaded.append(wr.Report.from_url(forge_url(u)))
         except Exception as e:
-            print("::notice title=report load failed::" + repr(e)[:300], flush=True); old = None
-    if refs.get("report") and old is not None:
-        old.title, old.description, old.blocks, old.width = report.title, report.description, report.blocks, report.width
-        report = old
+            print("::notice title=report load failed::" + u + " " + repr(e)[:200], flush=True)
+    if loaded:
+        keep, extra = loaded[0], loaded[1:]
+        keep.title, keep.description, keep.blocks, keep.width = report.title, report.description, report.blocks, report.width
+        report = keep
+        for old in extra:  # duplicates from earlier runs: mark, the user can delete them in the UI
+            old.title = "（重复，可删除）" + TITLE
+            old.save()
+            print("::notice title=duplicate marked::" + public_url(old.url), flush=True)
     report.save()
-    refs["report"] = public_url(report.url)
-    refs_file.write_text(json.dumps(refs, ensure_ascii=False, indent=2))
-    print("PAPER REPORT", refs["report"], flush=True)
-    print("::notice title=paper report::" + refs["report"], flush=True)
+    url = public_url(report.url)
+    Path("paper_report_ref.json").write_text(json.dumps({"report": url}, ensure_ascii=False, indent=2))
+    print("::notice title=paper report::" + url, flush=True)
     assert wr.Report.from_url(report.url).title == TITLE
-    print("VERIFIED", flush=True)
+    print("VERIFIED", url, flush=True)
 
 
 if __name__ == "__main__":
